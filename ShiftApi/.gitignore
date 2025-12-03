@@ -1,17 +1,115 @@
-# Visual Studio
-.vs/
+###############################
+# Visual Studio / .NET Core
+###############################
+
+## Build results
 bin/
 obj/
+out/
 
-# User-specific files
+## VS folder (must ignore to avoid lock errors)
+.vs/
+
+## User files
 *.user
 *.suo
+*.userosscache
+*.sln.docstates
 
-# Build artifacts
-*.dll
-*.pdb
-*.exe
-
-# Others
+## Cache
 *.cache
 *.log
+
+## Visual Studio Code
+.vscode/
+
+## Rider
+.idea/
+
+###############################
+# Aspire Specific
+###############################
+
+# Aspire generated folders
+**/ServiceDependencies/
+**/ServiceReferences/
+**/Properties/ServiceDependencies/
+
+# Aspire AppHost generated logs and caches
+**/AppHost/obj/
+**/AppHost/bin/
+**/AppHost/.todos/
+**/AppHost/.cache/
+
+###############################
+# Blazor Specific (Web Project)
+###############################
+
+# Blazor WebAssembly build artifacts
+wwwroot/*.gz
+wwwroot/*.br
+wwwroot/*.map
+wwwroot/css/generated/
+wwwroot/css/**/*.bundle.scp.css
+**/*.bundle.scp.css
+
+# Razor compiler
+**/client/wwwroot/
+
+###############################
+# .NET Generated
+###############################
+
+# NuGet
+*.nupkg
+packages/
+*.snupkg
+
+# Entity Framework Core Migrations temp
+**/Migrations/**/Snapshot.cs
+**/Migrations/*Designer.cs
+
+## Others
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+###############################
+# Logs
+###############################
+
+*.log
+logs/
+
+###############################
+# OS specific
+###############################
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+###############################
+# Docker (optional)
+###############################
+
+docker-compose.override.yml
+docker-compose.override.yaml
+docker-compose.*.yml
+docker-compose.*.yaml
+
+###############################
+# Git
+###############################
+
+# Ignore everything in the Ignored folder
+ignored/
