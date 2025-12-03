@@ -1,0 +1,24 @@
+/Controllers
+    AuthController.cs
+    UsersController.cs
+    ShiftRequestsController.cs
+    ShiftSchedulesController.cs
+
+/Models
+    User.cs
+    ShiftRequest.cs
+    ShiftSchedule.cs
+
+/DTOs
+    LoginRequest.cs
+    UserCreateDto.cs
+    UserUpdateDto.cs
+    ShiftRequestDto.cs
+    ShiftScheduleDto.cs
+
+/Data
+    AppDbContext.cs
+
+/Services
+    IJwtService.cs
+    JwtService.cs

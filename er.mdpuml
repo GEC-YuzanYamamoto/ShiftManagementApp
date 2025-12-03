@@ -1,0 +1,40 @@
+@startuml
+entity Users {
+    *Id : int <<PK>>
+    Name : nvarchar
+    Email : nvarchar
+    PasswordHash : nvarhcar
+    Role : tinyint
+    CreatedAt : datetime
+}
+
+entity ShiftRequests {
+    *Id : int <<PK>>
+    UserId : int <<FK>>
+    ShiftDate : date
+    ShiftType : tinyint
+    CreatedAt : datetime
+}
+
+entity ShiftSchedules {
+    *Id : int <<PK>>
+    UserId : int <<FK>>
+    ShiftDate : date
+    ShiftType : tinyint
+    ConfirmedAt : datetime
+    ConfirmedBy : int <<FK>>
+}
+
+entity ShiftTypes {
+    *Id : int <<PK>>
+    Name : nvarchar
+    StartTime : time
+    EndTime : time
+}
+
+Users ||--o{ ShiftRequests : submits
+Users ||--o{ ShiftSchedules : assigned
+Users ||--o{ ShiftSchedules : confirms
+ShiftTypes ||--o{ ShiftRequests : type
+ShiftTypes ||--o{ ShiftSchedules : type
+@enduml
