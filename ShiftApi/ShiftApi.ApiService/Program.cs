@@ -1,17 +1,49 @@
+using Microsoft.EntityFrameworkCore;
+using ShiftApi.ApiService.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add service defaults & Aspire client integrations.
+// Aspire のサービス共通設定
 builder.AddServiceDefaults();
 
-// Add services to the container.
+// DbContext(PostgreSQL)
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// MVC / API
+builder.Services.AddControllers();
+
+// Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// 問題詳細レスポンス
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// 開発環境のときだけ Swagger UI を有効化
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// 例外ハンドラ
 app.UseExceptionHandler();
 
-string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
+// HTTPS リダイレクト
+app.UseHttpsRedirection();
+
+// コントローラのルート (/users など)
+app.MapControllers();
+
+// おまけの WeatherForecast API（残しておきたいなら）
+string[] summaries =
+[
+    "Freezing", "Bracing", "Chilly", "Cool", "Mild",
+    "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+];
 
 app.MapGet("/weatherforecast", () =>
 {
@@ -23,12 +55,15 @@ app.MapGet("/weatherforecast", () =>
             summaries[Random.Shared.Next(summaries.Length)]
         ))
         .ToArray();
+
     return forecast;
 })
 .WithName("GetWeatherForecast");
 
+// Aspire のデフォルトエンドポイント
 app.MapDefaultEndpoints();
 
+// 最後に一回だけ Run
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
