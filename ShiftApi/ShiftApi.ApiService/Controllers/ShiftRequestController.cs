@@ -118,9 +118,7 @@ namespace ShiftApi.ApiService.Controllers
         // PUT /shift-requests/{id}
         // 自分の希望変更 or 管理者による修正
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ShiftRequestDto>> Update(
-            int id,
-            [FromBody] UpdateShiftRequestDto dto)
+        public async Task<ActionResult<ShiftRequestDto>> Update(int id,[FromBody] UpdateShiftRequestDto dto)
         {
             var entity = await _db.ShiftRequests.FindAsync(id);
             if (entity == null) return NotFound();
@@ -167,33 +165,33 @@ namespace ShiftApi.ApiService.Controllers
         // 管理者向け：ある日の「提出済み / 未提出」一覧
         [HttpGet("status")]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<List<ShiftSubmissionStatusDto>>> GetSubmissionStatus(
-            [FromQuery] DateOnly date)
+        public async Task<ActionResult<List<ShiftSubmissionStatusDto>>> GetSubmissionStatus([FromQuery] DateOnly date)
         {
-            // 全ユーザー
+            // 全ユーザーを取得
             var users = await _db.Users
                 .OrderBy(u => u.Id)
                 .ToListAsync();
 
-            // 指定日の希望一覧
+            // 指定日の希望一覧を取得
             var requests = await _db.ShiftRequests
                 .Where(r => r.ShiftDate == date)
                 .ToListAsync();
+
+            // UserId → ShiftRequest の辞書
+            var requestDict = requests.ToDictionary(r => r.UserId, r => r);
 
             var results = new List<ShiftSubmissionStatusDto>();
 
             foreach (var user in users)
             {
-                var req = requests.FirstOrDefault(r => r.UserId == user.Id);
-
-                if (req != null)
+                if (requestDict.TryGetValue(user.Id, out var req))
                 {
                     // 提出済み
                     results.Add(new ShiftSubmissionStatusDto
                     {
                         UserId = user.Id,
                         ShiftDate = date,
-                        ShiftType = req.ShiftType.ToString(), // そのまま byte を ToString() でもOK。enum化も検討。
+                        ShiftType = req.ShiftType.ToString(),
                         Status = "submitted"
                     });
                 }
