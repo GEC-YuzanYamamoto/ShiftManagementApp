@@ -1,9 +1,11 @@
 @startuml
+left to right direction
+
 entity Users {
     *Id : int <<PK>>
     Name : nvarchar
     Email : nvarchar
-    PasswordHash : nvarhcar
+    PasswordHash : nvarchar
     Role : tinyint
     CreatedAt : datetime
 }
@@ -14,6 +16,7 @@ entity ShiftRequests {
     ShiftDate : date
     ShiftType : tinyint
     CreatedAt : datetime
+    UpdatedAt : datetime
 }
 
 entity ShiftSchedules {
@@ -31,6 +34,10 @@ entity ShiftTypes {
     StartTime : time
     EndTime : time
 }
+
+' レイアウトを少し安定させるための隠し線（エラーには無関係）
+Users -[hidden]-> ShiftTypes
+ShiftRequests -[hidden]-> ShiftSchedules
 
 Users ||--o{ ShiftRequests : submits
 Users ||--o{ ShiftSchedules : assigned
