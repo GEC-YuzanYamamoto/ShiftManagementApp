@@ -18,6 +18,7 @@ namespace ShiftApi.ApiService.Controllers
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
 
+        // コンストラクタで DI された DbContext と IConfiguration を受け取る
         public AuthController(AppDbContext context, IConfiguration configuration)
         {
             _context = context;
@@ -51,6 +52,7 @@ namespace ShiftApi.ApiService.Controllers
             return Ok(new { token });
         }
 
+        // JWT トークンを生成するヘルパーメソッド
         private string GenerateJwtToken(User user)
         {
             var jwtSection = _configuration.GetSection("Jwt");
