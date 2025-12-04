@@ -7,6 +7,6 @@
         public string Email { get; set; } = null!;
         public string PasswordHash { get; set; } = null!;
         public byte Role { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
