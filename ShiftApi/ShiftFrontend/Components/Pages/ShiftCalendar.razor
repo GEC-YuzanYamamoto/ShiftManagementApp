@@ -131,14 +131,21 @@
     {
         CalendarWeeks.Clear();
 
-        // 月初の日付
-        var firstDay = CurrentMonth;
-        // その週の「日曜日」まで戻す
-        int offset = (int)firstDay.DayOfWeek; // Sunday = 0
-        var cursor = firstDay.AddDays(-offset);
+        var first = CurrentMonth;
+        var last = first.AddMonths(1).AddDays(-1);
 
-        // 6週間分あればだいたいどの月もカバーできる
-        for (int w = 0; w < 6; w++)
+        // カレンダーの開始日（日曜日まで戻す）
+        int firstOffset = (int)first.DayOfWeek;           // Sunday=0
+        var firstDateToShow = first.AddDays(-firstOffset);
+
+        // カレンダーの終了日（土曜日まで進める）
+        int lastOffset = 6 - (int)last.DayOfWeek;         // Saturday=6
+        var lastDateToShow = last.AddDays(lastOffset);
+
+        var cursor = firstDateToShow;
+
+        // 開始日〜終了日まで 1週間ずつループ
+        while (cursor <= lastDateToShow)
         {
             var week = new List<DateOnly?>();
 
@@ -146,11 +153,11 @@
             {
                 if (cursor.Month == CurrentMonth.Month)
                 {
-                    week.Add(cursor);
+                    week.Add(cursor);     // 当月の日付
                 }
                 else
                 {
-                    week.Add(null); // 前後の月は空白にしておく（必要なら表示してもOK）
+                    week.Add(null);       // 前月・翌月は空
                 }
 
                 cursor = cursor.AddDays(1);
@@ -159,6 +166,7 @@
             CalendarWeeks.Add(week);
         }
     }
+
 
     private async Task PrevMonth()
     {
