@@ -7,9 +7,6 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Aspire のサービス共通設定
-builder.AddServiceDefaults();
-
 // DbContext(PostgreSQL)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -99,9 +96,6 @@ app.UseAuthorization();
 
 // コントローラのルート (/users など)
 app.MapControllers();
-
-// Aspire のデフォルトエンドポイント
-app.MapDefaultEndpoints();
 
 // 最後に一回だけ Run
 app.Run();

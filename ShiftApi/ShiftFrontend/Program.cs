@@ -1,19 +1,23 @@
-using ShiftApi.Web;
-using ShiftApi.Web.Components;
+﻿using ShiftFrontend.Components;
+using ShiftFrontend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add service defaults & Aspire client integrations.
-builder.AddServiceDefaults();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddOutputCache();
+builder.Services.AddHttpClient("ShiftApi", client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7546/");
+});
+
+// API クライアント
+builder.Services.AddScoped<ShiftApiClient>();
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -26,11 +30,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-app.UseOutputCache();
-
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-app.MapDefaultEndpoints();
 
 app.Run();

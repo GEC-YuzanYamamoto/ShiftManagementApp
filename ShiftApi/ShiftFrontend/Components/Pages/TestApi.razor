@@ -1,0 +1,31 @@
+﻿<h3>TestApi</h3>
+
+@page "/test-api"
+@rendermode InteractiveServer
+@inject ShiftFrontend.Services.ShiftApiClient Api
+
+<h3>TestApi</h3>
+<h3>API テスト</h3>
+
+<button @onclick="CallApi">API 呼び出し</button>
+
+<p>結果:</p>
+<pre>@result</pre>
+
+@code {
+    private string result = "（まだ何もしていません）";
+
+    private async Task CallApi()
+    {
+        result = "API 呼び出し中…";
+
+        try
+        {
+            result = await Api.TestAsync();
+        }
+        catch (Exception ex)
+        {
+            result = "エラーが発生しました:\n" + ex.ToString();
+        }
+    }
+}
