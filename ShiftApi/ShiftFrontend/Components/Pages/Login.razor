@@ -1,0 +1,46 @@
+﻿<h3>Login</h3>
+
+@page "/login"
+@rendermode InteractiveServer
+@inject ShiftFrontend.Services.ShiftApiClient Api
+@inject NavigationManager Nav
+
+<h3>ログイン</h3>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p>@message</p>
+}
+
+<div>
+    <label>メールアドレス：</label>
+    <input @bind="email" />
+</div>
+<div>
+    <label>パスワード：</label>
+    <input type="password" @bind="password" />
+</div>
+
+<button @onclick="OnLogin">ログイン</button>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private string? message;
+
+    private async Task OnLogin()
+    {
+        message = null;
+
+        var ok = await Api.LoginAsync(email, password);
+        if (!ok)
+        {
+            message = "ログインに失敗しました。メールアドレスまたはパスワードが正しくありません。";
+            return;
+        }
+
+        message = "ログイン成功！";
+        // テストとして TestApi に遷移
+        Nav.NavigateTo("/test-api");
+    }
+}

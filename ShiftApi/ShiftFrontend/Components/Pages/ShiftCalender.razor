@@ -1,0 +1,230 @@
+﻿<h3>ShiftCalender</h3>
+
+@page "/shift-calendar"
+@rendermode InteractiveServer
+@using ShiftFrontend.Models
+@inject ShiftFrontend.Services.ShiftApiClient Api
+
+<h3>シフトカレンダー</h3>
+
+<div class="mb-2">
+    <button @onclick="PrevMonth">＜</button>
+    <span style="margin:0 1rem;">@CurrentMonth.Year 年 @CurrentMonth.Month 月</span>
+    <button @onclick="NextMonth">＞</button>
+</div>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p>@message</p>
+}
+
+<table class="table table-bordered" style="width:auto;">
+    <thead>
+        <tr>
+            @foreach (var d in WeekDays)
+            {
+                <th>@d</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var week in CalendarWeeks)
+        {
+            <tr>
+                @foreach (var day in week)
+                {
+                    if (day == null)
+                    {
+                        <td></td>
+                    }
+                    else
+                    {
+                        var date = day.Value;
+                        var shift = Shifts.FirstOrDefault(s => s.ShiftDate == date);
+
+                        <td class="calendar-cell @(date == DateOnly.FromDateTime(DateTime.Today) ? "today" : "")"
+                            @onclick="@(() => OnDateClick(date))">
+
+                            <div>@date.Day</div>
+
+                            @if (shift != null)
+                            {
+                                <div class="small">@GetShiftLabel(shift.ShiftType)</div>
+                            }
+                        </td>
+                    }
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (SelectedDate != null)
+{
+    <div class="modal-overlay">
+        <div class="modal">
+            <h4>@SelectedDate.Value.ToString("yyyy/MM/dd") のシフト希望</h4>
+
+            <div>
+                <select @bind="SelectedShiftTypeString">
+                    <option value="">選択してください</option>
+                    <option value="1">早番</option>
+                    <option value="2">遅番</option>
+                    <option value="3">夜勤</option>
+                </select>
+            </div>
+
+            <div style="margin-top:1rem;">
+                <button @onclick="SaveShift">保存</button>
+                <button @onclick="CloseModal" style="margin-left:0.5rem;">キャンセル</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(modalMessage))
+            {
+                <p>@modalMessage</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private DateOnly CurrentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private List<ShiftRequestDto> Shifts = new();
+    private List<List<DateOnly?>> CalendarWeeks = new();
+
+    private string? message;
+    private DateOnly? SelectedDate;
+    private string? SelectedShiftTypeString;
+    private string? modalMessage;
+
+    private static readonly string[] WeekDays = new[] { "日", "月", "火", "水", "木", "金", "土" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMonthAsync();
+    }
+
+    private async Task LoadMonthAsync()
+    {
+        message = null;
+        modalMessage = null;
+
+        try
+        {
+            Shifts = await Api.GetMyShiftRequestsForMonthAsync(CurrentMonth.Year, CurrentMonth.Month);
+
+            if (Shifts.Count == 0)
+            {
+                message = "シフト希望がありません。（未ログインの場合もここが空になります）";
+            }
+        }
+        catch (Exception ex)
+        {
+            // 想定外のエラーだけここに来る
+            message = "データ取得中にエラーが発生しました。: " + ex.Message;
+        }
+
+        BuildCalendar();
+    }
+
+    private void BuildCalendar()
+    {
+        CalendarWeeks.Clear();
+
+        // 月初の日付
+        var firstDay = CurrentMonth;
+        // その週の「日曜日」まで戻す
+        int offset = (int)firstDay.DayOfWeek; // Sunday = 0
+        var cursor = firstDay.AddDays(-offset);
+
+        // 6週間分あればだいたいどの月もカバーできる
+        for (int w = 0; w < 6; w++)
+        {
+            var week = new List<DateOnly?>();
+
+            for (int d = 0; d < 7; d++)
+            {
+                if (cursor.Month == CurrentMonth.Month)
+                {
+                    week.Add(cursor);
+                }
+                else
+                {
+                    week.Add(null); // 前後の月は空白にしておく（必要なら表示してもOK）
+                }
+
+                cursor = cursor.AddDays(1);
+            }
+
+            CalendarWeeks.Add(week);
+        }
+    }
+
+    private async Task PrevMonth()
+    {
+        CurrentMonth = CurrentMonth.AddMonths(-1);
+        await LoadMonthAsync();
+    }
+
+    private async Task NextMonth()
+    {
+        CurrentMonth = CurrentMonth.AddMonths(1);
+        await LoadMonthAsync();
+    }
+
+    private void OnDateClick(DateOnly date)
+    {
+        SelectedDate = date;
+
+        // 既に登録済みなら初期値として選んでおく
+        var existing = Shifts.FirstOrDefault(s => s.ShiftDate == date);
+        SelectedShiftTypeString = existing?.ShiftType.ToString() ?? "";
+
+        modalMessage = null;
+    }
+
+    private async Task SaveShift()
+    {
+        modalMessage = null;
+
+        if (SelectedDate == null)
+        {
+            modalMessage = "日付が選択されていません。";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(SelectedShiftTypeString) || !byte.TryParse(SelectedShiftTypeString, out var shiftType))
+        {
+            modalMessage = "シフト種別を選択してください。";
+            return;
+        }
+
+        var ok = await Api.CreateShiftRequestAsync(SelectedDate.Value, shiftType);
+        if (!ok)
+        {
+            modalMessage = "保存に失敗しました。";
+            return;
+        }
+
+        // 再読み込み
+        await LoadMonthAsync();
+
+        // モーダルを閉じる
+        SelectedDate = null;
+    }
+
+    private void CloseModal()
+    {
+        SelectedDate = null;
+        modalMessage = null;
+    }
+
+    private string GetShiftLabel(int shiftType)
+        => shiftType switch
+        {
+            1 => "早番",
+            2 => "遅番",
+            3 => "夜勤",
+            _ => "未設定"
+        };
+}

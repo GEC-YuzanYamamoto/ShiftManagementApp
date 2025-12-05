@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ShiftApi.ApiService\ShiftApi.ApiService.csproj" />
-    <ProjectReference Include="..\ShiftApi.Web\ShiftApi.Web.csproj" />
+    <ProjectReference Include="..\ShiftFrontend\ShiftFrontend.csproj" />
   </ItemGroup>
 
   <ItemGroup>
