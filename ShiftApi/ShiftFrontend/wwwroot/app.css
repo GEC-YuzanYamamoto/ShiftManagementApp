@@ -65,16 +65,23 @@ h1:focus {
         border: 2px solid #007bff;
     }
 
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
+/* 画面全体にかぶせる「黒い半透明」のレイヤー */
+.shift-modal-overlay {
+    position: fixed; /* 画面全体に固定 */
+    inset: 0; /* top, right, bottom, left = 0 */
+    background: rgba(0, 0, 0, .4);
+    display: flex; /* 中身を中央寄せにするため */
+    align-items: center;
+    justify-content: center;
+    z-index: 2000; /* 他より前面に出す */
 }
 
-.modal {
-    background: white;
-    padding: 1rem;
-    border-radius: 6px;
-    max-width: 300px;
-    margin: 5rem auto;
+/* 真ん中の白いボックス */
+.shift-modal {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    min-width: 260px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, .2);
 }
+

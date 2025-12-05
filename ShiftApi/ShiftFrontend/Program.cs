@@ -12,6 +12,9 @@ builder.Services.AddHttpClient("ShiftApi", client =>
     client.BaseAddress = new Uri("https://localhost:7546/");
 });
 
+// 認証状態管理
+builder.Services.AddScoped<AuthState>();
+
 // API クライアント
 builder.Services.AddScoped<ShiftApiClient>();
 

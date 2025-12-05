@@ -1,10 +1,11 @@
-﻿<h3>ShiftCalender</h3>
-
-@page "/shift-calendar"
+﻿@page "/shift-calendar"
 @rendermode InteractiveServer
 @using ShiftFrontend.Models
 @inject ShiftFrontend.Services.ShiftApiClient Api
+@inject ShiftFrontend.Services.AuthState Auth
+@inject NavigationManager Nav
 
+<h3>ShiftCalender</h3>
 <h3>シフトカレンダー</h3>
 
 <div class="mb-2">
@@ -44,7 +45,6 @@
 
                         <td class="calendar-cell @(date == DateOnly.FromDateTime(DateTime.Today) ? "today" : "")"
                             @onclick="@(() => OnDateClick(date))">
-
                             <div>@date.Day</div>
 
                             @if (shift != null)
@@ -61,8 +61,8 @@
 
 @if (SelectedDate != null)
 {
-    <div class="modal-overlay">
-        <div class="modal">
+    <div class="shift-modal-overlay">
+        <div class="shift-modal">
             <h4>@SelectedDate.Value.ToString("yyyy/MM/dd") のシフト希望</h4>
 
             <div>
@@ -87,6 +87,7 @@
     </div>
 }
 
+
 @code {
     private DateOnly CurrentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
     private List<ShiftRequestDto> Shifts = new();
@@ -101,50 +102,48 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!Auth.IsLoggedIn)
+        {
+            Nav.NavigateTo("/login", true);  // 強制的にログインへ
+            return;
+        }
+
         await LoadMonthAsync();
     }
+
 
     private async Task LoadMonthAsync()
     {
         message = null;
         modalMessage = null;
 
-        try
+        Shifts = await Api.GetMyShiftRequestsForMonthAsync(CurrentMonth.Year, CurrentMonth.Month);
+        if (Shifts.Count == 0)
         {
-            Shifts = await Api.GetMyShiftRequestsForMonthAsync(CurrentMonth.Year, CurrentMonth.Month);
-
-            if (Shifts.Count == 0)
-            {
-                message = "シフト希望がありません。（未ログインの場合もここが空になります）";
-            }
-        }
-        catch (Exception ex)
-        {
-            // 想定外のエラーだけここに来る
-            message = "データ取得中にエラーが発生しました。: " + ex.Message;
+            message = "シフト希望がありません。（未ログインの場合もここが空になります）";
         }
 
         BuildCalendar();
     }
 
+    // ★ 余計な空行が出ないように、必要な週だけ作る
     private void BuildCalendar()
     {
         CalendarWeeks.Clear();
 
-        var first = CurrentMonth;
-        var last = first.AddMonths(1).AddDays(-1);
+        var first = CurrentMonth;                          // 月初 (1日)
+        var last = first.AddMonths(1).AddDays(-1);        // 月末
 
-        // カレンダーの開始日（日曜日まで戻す）
-        int firstOffset = (int)first.DayOfWeek;           // Sunday=0
+        // カレンダー開始：その月の1日の属する週の日曜日
+        int firstOffset = (int)first.DayOfWeek;            // Sunday=0
         var firstDateToShow = first.AddDays(-firstOffset);
 
-        // カレンダーの終了日（土曜日まで進める）
-        int lastOffset = 6 - (int)last.DayOfWeek;         // Saturday=6
+        // カレンダー終了：月末の属する週の土曜日
+        int lastOffset = 6 - (int)last.DayOfWeek;          // Saturday=6
         var lastDateToShow = last.AddDays(lastOffset);
 
         var cursor = firstDateToShow;
 
-        // 開始日〜終了日まで 1週間ずつループ
         while (cursor <= lastDateToShow)
         {
             var week = new List<DateOnly?>();
@@ -153,11 +152,11 @@
             {
                 if (cursor.Month == CurrentMonth.Month)
                 {
-                    week.Add(cursor);     // 当月の日付
+                    week.Add(cursor);
                 }
                 else
                 {
-                    week.Add(null);       // 前月・翌月は空
+                    week.Add(null);
                 }
 
                 cursor = cursor.AddDays(1);
@@ -166,7 +165,6 @@
             CalendarWeeks.Add(week);
         }
     }
-
 
     private async Task PrevMonth()
     {
@@ -184,7 +182,7 @@
     {
         SelectedDate = date;
 
-        // 既に登録済みなら初期値として選んでおく
+        // 既に登録済みなら初期値をセット
         var existing = Shifts.FirstOrDefault(s => s.ShiftDate == date);
         SelectedShiftTypeString = existing?.ShiftType.ToString() ?? "";
 
@@ -201,7 +199,8 @@
             return;
         }
 
-        if (string.IsNullOrEmpty(SelectedShiftTypeString) || !byte.TryParse(SelectedShiftTypeString, out var shiftType))
+        if (string.IsNullOrEmpty(SelectedShiftTypeString) ||
+            !int.TryParse(SelectedShiftTypeString, out var shiftType))
         {
             modalMessage = "シフト種別を選択してください。";
             return;
@@ -214,11 +213,8 @@
             return;
         }
 
-        // 再読み込み
-        await LoadMonthAsync();
-
-        // モーダルを閉じる
-        SelectedDate = null;
+        await LoadMonthAsync();   // 再読み込みして反映
+        SelectedDate = null;      // モーダルを閉じる
     }
 
     private void CloseModal()
@@ -227,12 +223,11 @@
         modalMessage = null;
     }
 
-    private string GetShiftLabel(int shiftType)
-        => shiftType switch
-        {
-            1 => "早番",
-            2 => "遅番",
-            3 => "夜勤",
-            _ => "未設定"
-        };
+    private string GetShiftLabel(int shiftType) => shiftType switch
+    {
+        1 => "早番",
+        2 => "遅番",
+        3 => "夜勤",
+        _ => "未設定"
+    };
 }

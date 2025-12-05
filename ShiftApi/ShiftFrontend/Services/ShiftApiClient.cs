@@ -12,6 +12,8 @@ public class ShiftApiClient
     private readonly HttpClient _http;
     private string? _jwtToken;
 
+    // 追加 👇（読み取り専用プロパティ）
+    public bool IsLoggedIn => !string.IsNullOrEmpty(_jwtToken);
     public ShiftApiClient(IHttpClientFactory httpClientFactory)
     {
         _http = httpClientFactory.CreateClient("ShiftApi");
@@ -28,7 +30,7 @@ public class ShiftApiClient
     // AuthController は { token } だけ返しているのでそれを受ける
     public class LoginResponse
     {
-        public string Token { get; set; } = string.Empty; 
+        public string Token { get; set; } = string.Empty;
     }
 
     // ==== トークンのセット ====
@@ -107,15 +109,15 @@ public class ShiftApiClient
     }
 
 
-    public async Task<bool> CreateShiftRequestAsync(DateOnly date, byte shiftType)
+    public async Task<bool> CreateShiftRequestAsync(DateOnly date, int shiftType)
     {
-            var dto = new CreateShiftRequestDto
-            {
-                ShiftDate = date,
-                ShiftType = shiftType
-            };
+        var dto = new CreateShiftRequestDto
+        {
+            ShiftDate = date,
+            ShiftType = (byte)shiftType
+        };
 
-            var res = await _http.PostAsJsonAsync("shift-requests", dto);
-            return res.IsSuccessStatusCode;
+        var res = await _http.PostAsJsonAsync("shift-requests", dto);
+        return res.IsSuccessStatusCode;
     }
 }

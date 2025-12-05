@@ -1,4 +1,7 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@inject ShiftFrontend.Services.AuthState Auth
+
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">ShiftFrontend</a>
     </div>
@@ -9,34 +12,36 @@
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="test-api">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> APIテスト
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
             <NavLink class="nav-link" href="login" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>ログイン
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>ログイン
             </NavLink>
         </div>
 
-        <div class="nav-item px-0-3">
-            <NavLink class="nav-link" href="shift-calendar" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>シフトカレンダー"
-            </NavLink>
-        </div>
+        @if (Auth.IsLoggedIn) // ログイン済みの場合のみ表示
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="test-api">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> APIテスト
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-0-3">
+                <NavLink class="nav-link" href="shift-calendar" Match="NavLinkMatch.All">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>シフトカレンダー"
+                </NavLink>
+            </div>
+        }
     </nav>
 </div>
 
+@code {
+    protected override void OnInitialized()
+    {
+        Auth.OnChange += StateHasChanged;  // ← 状態変化を購読する
+    }
+
+    public void Dispose()
+    {
+        Auth.OnChange -= StateHasChanged;  // ← 購読解除
+    }
+}
