@@ -1,8 +1,5 @@
-﻿<h3>Login</h3>
-
-@page "/"
+﻿@page "/"
 @page "/login"
-@rendermode InteractiveServer
 @inject ShiftFrontend.Services.ShiftApiClient Api
 @inject ShiftFrontend.Services.AuthState Auth
 @inject NavigationManager Nav
@@ -39,8 +36,9 @@
             return;
         }
 
-        Auth.SetLogin("Admin");
+        var role = Api.CurrentRole ?? "Staff";
+        Auth.SetLogin(role, email);
 
-        Nav.NavigateTo("/shift-calendar");  // or /shift, /admin/shift
+        Nav.NavigateTo("shift-calendar");
     }
 }

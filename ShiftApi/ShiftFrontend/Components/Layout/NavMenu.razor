@@ -1,9 +1,11 @@
 ﻿@inject ShiftFrontend.Services.AuthState Auth
+@inject ShiftFrontend.Services.ShiftApiClient Api
+@inject NavigationManager Nav
 
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">ShiftFrontend</a>
+        <a class="navbar-brand" href="">CalenShift</a>
     </div>
 </div>
 
@@ -11,25 +13,44 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="login" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>ログイン
-            </NavLink>
-        </div>
-
-        @if (Auth.IsLoggedIn) // ログイン済みの場合のみ表示
+        @if(!Auth.IsLoggedIn)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="login" Match="NavLinkMatch.All">
+                    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>ログイン
+                </NavLink>
+            </div>
+        }
+        else
         {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="test-api">
-                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> APIテスト
+                     APIテスト
                 </NavLink>
             </div>
 
-            <div class="nav-item px-0-3">
-                <NavLink class="nav-link" href="shift-calendar" Match="NavLinkMatch.All">
-                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>シフトカレンダー"
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="shift-calendar">
+                    シフトカレンダー
                 </NavLink>
             </div>
+
+            @if (Auth.Role == "Admin")
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="users">
+                        ユーザー管理
+                    </NavLink>
+                </div>
+            }
+        }
+        @if (Auth.IsLoggedIn)
+        {
+        <div class="nav-item px-3 logout-item">
+            <button class="nav-link btn btn-link" @onclick="Logout">
+                ログアウト
+            </button>
+        </div>
         }
     </nav>
 </div>
@@ -43,5 +64,14 @@
     public void Dispose()
     {
         Auth.OnChange -= StateHasChanged;  // ← 購読解除
+    }
+
+    private void Logout()
+    {
+        Auth.Logout();
+        Api.ClearToken();
+
+        // ログアウト後はログインページへ
+        Nav.NavigateTo("login", forceLoad: true);
     }
 }

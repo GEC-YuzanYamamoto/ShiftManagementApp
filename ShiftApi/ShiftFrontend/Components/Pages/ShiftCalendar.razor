@@ -1,12 +1,12 @@
 ﻿@page "/shift-calendar"
-@rendermode InteractiveServer
 @using ShiftFrontend.Models
 @inject ShiftFrontend.Services.ShiftApiClient Api
 @inject ShiftFrontend.Services.AuthState Auth
 @inject NavigationManager Nav
 
-<h3>ShiftCalender</h3>
 <h3>シフトカレンダー</h3>
+
+<hr />
 
 <div class="mb-2">
     <button @onclick="PrevMonth">＜</button>
@@ -120,13 +120,13 @@
         Shifts = await Api.GetMyShiftRequestsForMonthAsync(CurrentMonth.Year, CurrentMonth.Month);
         if (Shifts.Count == 0)
         {
-            message = "シフト希望がありません。（未ログインの場合もここが空になります）";
+            message = "シフト希望がありません。";
         }
 
         BuildCalendar();
     }
 
-    // ★ 余計な空行が出ないように、必要な週だけ作る
+    // 余計な空行が出ないように、必要な週だけ作る
     private void BuildCalendar()
     {
         CalendarWeeks.Clear();

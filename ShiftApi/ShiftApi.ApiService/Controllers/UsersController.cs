@@ -5,6 +5,7 @@ using ShiftApi.ApiService.Data;
 using ShiftApi.ApiService.Models;
 using ShiftApi.ApiService.Models.DTOs;
 using ShiftApi.ApiService.Services;
+using System.Security.Claims;
 
 namespace ShiftApi.ApiService.Controllers
 {
@@ -56,6 +57,41 @@ namespace ShiftApi.ApiService.Controllers
             await _context.SaveChangesAsync();
 
             return Created($"/users/{user.Id}", new { user.Id, user.Name, user.Email, user.Role });
+        }
+
+        // DELETE /users/{id}
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteUser(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            // 自分自身を削除させない
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(currentUserIdClaim, out var currentUserId) && currentUserId == id)
+            {
+                return BadRequest("自分自身のアカウントは削除できません。");
+            }
+
+            // 最後の管理者を削除させない
+            if (user.Role == 1)
+            {
+                var hasOtherAdmins = await _context.Users
+                    .AnyAsync(u => u.Role == 1 && u.Id != id);
+
+                if (!hasOtherAdmins)
+                {
+                    return BadRequest("最後の管理者ユーザーは削除できません。");
+                }
+            }
+
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
     }
 }

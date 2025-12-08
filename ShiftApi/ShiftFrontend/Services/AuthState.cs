@@ -5,12 +5,15 @@
         public bool IsLoggedIn { get; private set; }
         public string? Role { get; private set; }
 
+        public string? Email { get; private set; }
+
         public event Action? OnChange;
 
-        public void SetLogin(string? role)
+        public void SetLogin(string? role, string? email)
         {
             IsLoggedIn = true;
             Role = role;
+            Email = email;
             NotifyStateChanged();
         }
 
@@ -18,6 +21,7 @@
         {
             IsLoggedIn = false;
             Role = null;
+            Email = null;
             NotifyStateChanged();
         }
 
