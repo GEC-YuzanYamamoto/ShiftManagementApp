@@ -5,7 +5,7 @@
 @inject ShiftFrontend.Services.AuthState Auth
 @inject NavigationManager Nav
 
-<h3>シフト管理（カレンダー）</h3>
+<h4>シフト管理（カレンダー）</h4>
 <hr />
 
 @if (!Auth.IsLoggedIn)
@@ -26,8 +26,6 @@ else
             <h4 class="m-0">@currentMonth.ToString("yyyy年MM月")</h4>
             <button class="btn btn-outline-secondary btn-sm" @onclick="NextMonth">翌月 ＞</button>
         </div>
-
-        <p>カレンダーを読み込み中...</p>
     }
     else if (!string.IsNullOrEmpty(loadError))
     {
@@ -416,21 +414,28 @@ else
     }
 
     // 前月移動
-    private void PrevMonth()
+    private async Task PrevMonth()
     {
+        if (!isLoaded) return;
+
         currentMonth = currentMonth.AddMonths(-1);
         selectedDate = null;
+
         CalcCalendarStart();
-        _ = LoadCalendarData();
+        await LoadCalendarData();
     }
 
     // 次月移動
-    private void NextMonth()
+    private async Task NextMonth()
     {
+        if (!isLoaded) return;
+
         currentMonth = currentMonth.AddMonths(1);
         selectedDate = null;
+
         CalcCalendarStart();
-        _ = LoadCalendarData();
+        await LoadCalendarData();
+
     }
     
     // 日付選択
