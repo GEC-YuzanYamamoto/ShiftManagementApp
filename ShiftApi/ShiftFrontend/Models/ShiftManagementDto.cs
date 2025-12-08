@@ -1,18 +1,17 @@
 ﻿namespace ShiftFrontend.Models
 {
-    public class ShiftRequestDto
+    public class ShiftScheduleDto
     {
         public int Id { get; set; }
         public int UserId { get; set; }
         public string UserName { get; set; } = "";
         public DateOnly ShiftDate { get; set; }
         public byte ShiftType { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public byte Status { get; set; }
     }
 
-    public class CreateShiftRequestDto
+    public class ShiftManagementDto
     {
+        public int UserId { get; set; }
         public DateOnly ShiftDate { get; set; }
         public byte ShiftType { get; set; }
     }

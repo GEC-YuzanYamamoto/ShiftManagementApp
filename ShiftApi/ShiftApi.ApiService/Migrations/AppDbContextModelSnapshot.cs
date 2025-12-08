@@ -39,6 +39,9 @@ namespace ShiftApi.ApiService.Migrations
                     b.Property<byte>("ShiftType")
                         .HasColumnType("smallint");
 
+                    b.Property<byte>("Status")
+                        .HasColumnType("smallint");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 

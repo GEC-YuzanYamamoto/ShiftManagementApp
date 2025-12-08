@@ -50,21 +50,6 @@ h1:focus {
     border-color: #929292;
 }
 
-.calendar-cell {
-    width: 90px;
-    height: 70px;
-    vertical-align: top;
-    cursor: pointer;
-}
-
-    .calendar-cell div.small {
-        font-size: 0.8rem;
-    }
-
-    .calendar-cell.today {
-        border: 2px solid #007bff;
-    }
-
 /* 画面全体にかぶせる「黒い半透明」のレイヤー */
 .shift-modal-overlay {
     position: fixed; /* 画面全体に固定 */
@@ -84,3 +69,46 @@ h1:focus {
     min-width: 260px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, .2);
 }
+
+/* カレンダー全体の幅を少し縮める */
+.calendar-table {
+    table-layout: fixed;
+    width: 90%; /* 100% → 90% に縮小 */
+    margin: 0 auto; /* 中央寄せ */
+}
+
+/* 日付セルの高さを小さく */
+.calendar-cell {
+    height: 80px; /* 110px → 80px */
+    padding: 4px; /* 余白も小さく */
+    vertical-align: top;
+    font-size: 0.85rem; /* 全体の字もわずかに小さく */
+}
+
+    /* バッジの文字サイズも小さく */
+    .calendar-cell .badge {
+        font-size: 0.65rem;
+        padding: 0.25em 0.4em;
+    }
+
+/* 今日マーク（背景色を少し薄め） */
+.today {
+    background-color: rgba(0, 123, 255, 0.08);
+}
+
+/* モバイル用にも調整される */
+@media (max-width: 768px) {
+    .calendar-table {
+        width: 100%;
+    }
+
+    .calendar-cell {
+        height: 60px;
+        font-size: 0.75rem;
+    }
+
+        .calendar-cell .badge {
+            font-size: 0.6rem;
+        }
+}
+

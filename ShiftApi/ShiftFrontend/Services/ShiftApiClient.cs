@@ -147,7 +147,53 @@ public class ShiftApiClient
         return res.IsSuccessStatusCode;
     }
 
+    // ==== シフト管理API ====
+    public async Task<bool> CreateShiftAsync(ShiftManagementDto request)
+    {
+        var client = await Task.FromResult(_http);
+        var response = await client.PostAsJsonAsync("shift-schedules", request);
+        return response.IsSuccessStatusCode;
+    }
+
+    // 指定期間のシフト希望一覧を取得（管理者は全員分）
+    // GET /shift-requests?from=yyyy-MM-dd&to=yyyy-MM-dd
+    public async Task<List<ShiftRequestDto>> GetShiftRequestsAsync(DateOnly from, DateOnly to)
+    {
+        var url = $"shift-requests?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}";
+
+        var result = await _http.GetFromJsonAsync<List<ShiftRequestDto>>(url);
+
+        // null 安全対策
+        return result ?? new List<ShiftRequestDto>();
+    }
+
+    // 指定期間の確定シフト一覧を取得
+    // GET /shift-schedules?from=yyyy-MM-dd&to=yyyy-MM-dd
+    public async Task<List<ShiftScheduleDto>> GetShiftSchedulesAsync(DateOnly from, DateOnly to)
+    {
+        var url = $"shift-schedules?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}";
+
+        var result = await _http.GetFromJsonAsync<List<ShiftScheduleDto>>(url);
+
+        return result ?? new List<ShiftScheduleDto>();
+    }
+
+    // 希望シフトを「承認済み」にする（＋必要ならバックエンド側でステータス更新）
+    // POST /shift-requests/{id}/approve
+    public async Task MarkRequestAsApprovedAsync(int requestId)
+    {
+        var response = await _http.PostAsync($"shift-requests/{requestId}/approve", content: null);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new ApplicationException(
+                $"シフト希望の承認に失敗しました (Status: {response.StatusCode}) Body: {body}");
+        }
+    }
+
     // ==== ユーザー管理API ====
+    // ユーザー一覧取得
     public async Task<List<UserDto>> GetUsersAsync()
     {
         var res = await _http.GetAsync("users");
@@ -161,18 +207,21 @@ public class ShiftApiClient
         return data ?? new List<UserDto>();
     }
 
+    // ユーザー作成
     public async Task<bool> CreateUserAsync(CreateUserDto dto)
     {
         var res = await _http.PostAsJsonAsync("users", dto);
         return res.IsSuccessStatusCode;
     }
 
+    // ユーザー更新
     public async Task<bool> UpdateUserAsync(int id, UpdateUserDto dto)
     {
         var res = await _http.PutAsJsonAsync($"users/{id}", dto);
         return res.IsSuccessStatusCode;
     }
 
+    // ユーザー削除
     public async Task<bool> DeleteUserAsync(int id)
     {
         var res = await _http.DeleteAsync($"users/{id}");
