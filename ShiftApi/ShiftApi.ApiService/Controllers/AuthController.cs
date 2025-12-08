@@ -4,7 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using ShiftApi.ApiService.Data;
 using ShiftApi.ApiService.Models;
 using ShiftApi.ApiService.Models.DTOs;
-using ShiftApi.ApiService.Services;  // PasswordHasher
+using ShiftApi.ApiService.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;

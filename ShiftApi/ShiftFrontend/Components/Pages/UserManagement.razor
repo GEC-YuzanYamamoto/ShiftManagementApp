@@ -1,0 +1,312 @@
+﻿@page "/users"
+@using ShiftFrontend.Models
+@inject ShiftFrontend.Services.ShiftApiClient Api
+@inject ShiftFrontend.Services.AuthState Auth
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+
+<h3>ユーザー管理</h3>
+
+<hr />
+
+@if (!Auth.IsLoggedIn)
+{
+    <p>ログインしていません。先にログインしてください。</p>
+    <button @onclick="@(() => Nav.NavigateTo("login"))">ログイン画面へ</button>
+}
+else if (Auth.Role != "Admin")
+{
+    <p>このページは管理者専用です。</p>
+}
+else
+{
+    <!-- 追加ボタン -->
+    <button class="btn btn-success mb-3" @onclick="ToggleCreateForm">
+        @(showCreateForm ? "－ 閉じる" : "＋ ユーザーを追加")
+    </button>
+
+    <!-- ユーザー登録フォーム -->
+    @if (showCreateForm)
+    {
+        <div class="card p-3 mb-3">
+            <h4>ユーザー登録</h4>
+
+            @if (!string.IsNullOrEmpty(createError))
+            {
+                <p style="color:red;">@createError</p>
+            }
+            @if (!string.IsNullOrEmpty(createSuccess))
+            {
+                <p style="color:green;">@createSuccess</p>
+            }
+
+            <div class="mb-2">
+                <label class="form-label">メールアドレス</label>
+                <input class="form-control" @bind="newUserEmail" />
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">名前</label>
+                <input class="form-control" @bind="newUserName" />
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">パスワード</label>
+                <input type="password" class="form-control" @bind="newUserPassword" />
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">ロール</label>
+                <select class="form-select" @bind="newUserRole">
+                    <option value="">選択してください</option>
+                    <option value="0">スタッフ</option>
+                    <option value="1">管理者</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary"
+                    @onclick="OnCreateUser"
+                    disabled="@isCreating">
+                @(isCreating ? "登録中..." : "登録")
+            </button>
+        </div>
+    }
+
+    <!-- ユーザー一覧 -->
+    @if (!isLoaded)
+    {
+        <p>ユーザー情報を読み込み中...</p>
+    }
+    else if (!string.IsNullOrEmpty(loadError))
+    {
+        <p style="color:red;">エラー: @loadError</p>
+    }
+    else if (users.Count == 0)
+    {
+        <p>ユーザーが1件も取得できませんでした。</p>
+    }
+    else
+    {
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>メール</th>
+                    <th>名前</th>
+                    <th>ロール</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in users.Select((u, index) => new { User = u, Index = index + 1 }))
+                {
+                    <tr>
+                        <td>@u.Index</td>
+                        <td>@u.User.Email</td>
+                        <td>@u.User.Name</td>
+                        <td>@DisplayRole(u.User.Role)</td>
+                        <td>
+                            @if (!IsCurrentUser(u.User))
+                            {
+                                <button class="btn btn-danger btn-sm"
+                                        @onclick="() => OnDeleteUser(u.User.Id)"
+                                        disabled="@isDeleting">
+                                    削除
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private List<UserDto> users = new();
+    private bool isLoaded = false;
+    private string? loadError;
+
+    //  表示切り替え用フラグ
+    private bool showCreateForm = false;
+
+    private void ToggleCreateForm()
+    {
+        showCreateForm = !showCreateForm;
+
+        // 閉じたときはフォーム内容をリセットしておく
+        if (!showCreateForm)
+        {
+            ResetForm();
+        }
+    }
+
+    private void ResetForm()
+    {
+        newUserEmail = "";
+        newUserName = "";
+        newUserPassword = "";
+        newUserRole = null;
+        createError = null;
+        createSuccess = null;
+        isCreating = false;
+    }
+
+    //  登録フォーム用
+    private string newUserEmail = "";
+    private string newUserName = "";
+    private string newUserPassword = "";
+    private byte? newUserRole = null;
+    private bool isCreating = false;
+    private string? createError;
+    private string? createSuccess;
+
+    //  削除用フラグ & エラー
+    private bool isDeleting = false;
+    private string? deleteError;
+
+
+    private string DisplayRole(byte role) =>
+        role switch
+        {
+            0 => "スタッフ",
+            1 => "管理者",
+            _ => "Unknown"
+        };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 未ログイン／非管理者ならデータ読み込みしない
+        if (!Auth.IsLoggedIn || Auth.Role != "Admin")
+        {
+            return;
+        }
+
+        await LoadUsers();
+    }
+
+    private bool IsCurrentUser(UserDto u)
+    {
+        if (string.IsNullOrEmpty(Auth.Email) || string.IsNullOrEmpty(u.Email))
+        {
+            return false;
+        }
+
+        return string.Equals(Auth.Email, u.Email, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ユーザー一覧読み込み
+    private async Task LoadUsers()
+    {
+        try
+        {
+            isLoaded = false;
+            loadError = null;
+
+            users = await Api.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            loadError = ex.Message;
+        }
+        finally
+        {
+            isLoaded = true;
+        }
+    }
+
+    // ユーザー登録処理
+    private async Task OnCreateUser()
+    {
+        createError = null;
+        createSuccess = null;
+
+        if (string.IsNullOrWhiteSpace(newUserEmail) ||
+            string.IsNullOrWhiteSpace(newUserName) ||
+            string.IsNullOrWhiteSpace(newUserPassword) ||
+            newUserRole is null)
+        {
+            createError = "全ての項目を入力してください。";
+            return;
+        }
+
+        isCreating = true;
+        try
+        {
+            var req = new CreateUserDto
+            {
+                Email = newUserEmail,
+                Name = newUserName,
+                Password = newUserPassword,
+                Role = newUserRole.Value
+            };
+
+            var ok = await Api.CreateUserAsync(req); // ← ShiftApiClient 側に実装しておく
+
+            if (!ok)
+            {
+                createError = "ユーザー登録に失敗しました。";
+            }
+            else
+            {
+                createSuccess = "ユーザーを登録しました。";
+
+                // フォームリセット
+                newUserEmail = "";
+                newUserName = "";
+                newUserPassword = "";
+                newUserRole = null;
+
+                // 一覧を再読み込み
+                await LoadUsers();
+            }
+        }
+        catch (Exception ex)
+        {
+            createError = ex.Message;
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    // ユーザー削除処理
+    private async Task OnDeleteUser(int userId)
+    {
+        deleteError = null;
+
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "本当に削除してよろしいですか？");
+        if (!confirmed)
+        {
+            // キャンセルされたので何もしない
+            return;
+        }
+
+        isDeleting = true;
+
+        try
+        {
+            var ok = await Api.DeleteUserAsync(userId); // API クライアント
+
+            if (!ok)
+            {
+                deleteError = "ユーザーの削除に失敗しました。";
+                return;
+            }
+
+            // 一覧を再読み込み
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            deleteError = ex.Message;
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+}
