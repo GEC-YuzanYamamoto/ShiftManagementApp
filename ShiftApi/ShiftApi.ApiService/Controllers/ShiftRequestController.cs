@@ -19,6 +19,7 @@ namespace ShiftApi.ApiService.Controllers
             _db = db;
         }
 
+        // GET /shift-requests
         [HttpGet]
         public async Task<ActionResult<List<ShiftRequestDto>>> Get(
            [FromQuery] DateOnly? from,
@@ -98,6 +99,9 @@ namespace ShiftApi.ApiService.Controllers
                 existing.ShiftType = dto.ShiftType;
                 existing.UpdatedAt = DateTime.UtcNow;
 
+                // 再提出したので、ステータスを「未承認」に戻す
+                existing.Status = 0; // Pending
+
                 await _db.SaveChangesAsync();
                 return Ok(ToDto(existing));
             }
@@ -107,6 +111,9 @@ namespace ShiftApi.ApiService.Controllers
                 UserId = currentUserId,
                 ShiftDate = dto.ShiftDate,
                 ShiftType = dto.ShiftType,
+
+                // 新規提出は「未承認」
+                Status = 0
             };
 
             _db.ShiftRequests.Add(entity);
@@ -118,7 +125,7 @@ namespace ShiftApi.ApiService.Controllers
         // PUT /shift-requests/{id}
         // 自分の希望変更 or 管理者による修正
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ShiftRequestDto>> Update(int id,[FromBody] UpdateShiftRequestDto dto)
+        public async Task<ActionResult<ShiftRequestDto>> Update(int id, [FromBody] UpdateShiftRequestDto dto)
         {
             var entity = await _db.ShiftRequests.FindAsync(id);
             if (entity == null) return NotFound();
@@ -133,6 +140,9 @@ namespace ShiftApi.ApiService.Controllers
 
             entity.ShiftType = dto.ShiftType;
             entity.UpdatedAt = DateTime.UtcNow;
+
+            // 変更したら再度「未承認」にする運用
+            entity.Status = 0; // Pending
 
             await _db.SaveChangesAsync();
 
@@ -157,6 +167,23 @@ namespace ShiftApi.ApiService.Controllers
             }
 
             _db.ShiftRequests.Remove(entity);
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // 管理者用：希望を「承認済み」にするエンドポイント
+        // 例：フロントの Api.MarkRequestAsApprovedAsync(id) から呼ぶ想定
+        // POST /shift-requests/{id}/approve
+        [HttpPost("{id:int}/approve")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Approve(int id)
+        {
+            var entity = await _db.ShiftRequests.FindAsync(id);
+            if (entity == null) return NotFound();
+
+            entity.Status = 1;            // Approved
+            entity.UpdatedAt = DateTime.UtcNow;
+
             await _db.SaveChangesAsync();
             return NoContent();
         }
@@ -224,6 +251,7 @@ namespace ShiftApi.ApiService.Controllers
             return int.Parse(idClaim.Value);
         }
 
+        // Status も DTO に含めて返す
         private static ShiftRequestDto ToDto(ShiftRequest r) =>
             new()
             {
@@ -231,7 +259,8 @@ namespace ShiftApi.ApiService.Controllers
                 UserId = r.UserId,
                 ShiftDate = r.ShiftDate,
                 ShiftType = r.ShiftType,
-                CreatedAt = r.CreatedAt
+                CreatedAt = r.CreatedAt,
+                Status = r.Status
             };
     }
 }

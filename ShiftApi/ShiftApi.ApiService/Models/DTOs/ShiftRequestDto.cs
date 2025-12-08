@@ -6,6 +6,7 @@
         public int UserId { get; set; }
         public DateOnly ShiftDate { get; set; }
         public byte ShiftType { get; set; }
+        public byte Status { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 

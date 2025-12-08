@@ -4,230 +4,230 @@
 @inject ShiftFrontend.Services.AuthState Auth
 @inject NavigationManager Nav
 
-<h3>シフトカレンダー</h3>
-
+<h4>シフトカレンダー</h4>
 <hr />
 
-<div class="mb-2">
-    <button @onclick="PrevMonth">＜</button>
-    <span style="margin:0 1rem;">@CurrentMonth.Year 年 @CurrentMonth.Month 月</span>
-    <button @onclick="NextMonth">＞</button>
-</div>
-
-@if (!string.IsNullOrEmpty(message))
+@if (!Auth.IsLoggedIn)
 {
-    <p>@message</p>
+    <p>ログインしていません。ログインしてください。</p>
+    <button class="btn btn-primary" @onclick="@(() => Nav.NavigateTo("/login"))">ログインへ</button>
 }
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <button class="btn btn-outline-secondary btn-sm" @onclick="PrevMonth">＜ 前月</button>
+        <h4 class="m-0">@currentMonth.ToString("yyyy年MM月")</h4>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="NextMonth">翌月 ＞</button>
+    </div>
 
-<table class="table table-bordered" style="width:auto;">
-    <thead>
-        <tr>
-            @foreach (var d in WeekDays)
-            {
-                <th>@d</th>
-            }
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var week in CalendarWeeks)
-        {
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <p>@message</p>
+    }
+
+    <table class="table table-bordered calendar-table">
+        <thead class="table-light">
             <tr>
-                @foreach (var day in week)
-                {
-                    if (day == null)
-                    {
-                        <td></td>
-                    }
-                    else
-                    {
-                        var date = day.Value;
-                        var shift = Shifts.FirstOrDefault(s => s.ShiftDate == date);
+                <th class="text-center">日</th>
+                <th class="text-center">月</th>
+                <th class="text-center">火</th>
+                <th class="text-center">水</th>
+                <th class="text-center">木</th>
+                <th class="text-center">金</th>
+                <th class="text-center">土</th>
+            </tr>
+        </thead>
 
-                        <td class="calendar-cell @(date == DateOnly.FromDateTime(DateTime.Today) ? "today" : "")"
-                            @onclick="@(() => OnDateClick(date))">
-                            <div>@date.Day</div>
+        <tbody>
+            @for (int week = 0; week < weeksNeeded; week++)
+            {
+                <tr>
+                    @for (int day = 0; day < 7; day++)
+                    {
+                        var date = calendarStartDate.AddDays(week * 7 + day);
+                        var d = DateOnly.FromDateTime(date);
 
-                            @if (shift != null)
+                        var requests = ShiftRequests.Where(x => x.ShiftDate == d).ToList();
+                        var schedules = ShiftSchedules.Where(x => x.ShiftDate == d).ToList();
+
+                        bool isOther = date.Month != currentMonth.Month;
+
+                        <td class="@GetCellClass(date, isOther) calendar-cell"
+                            @onclick="@(() => OnDateClick(d))"
+                            style="cursor:pointer; vertical-align:top;">
+
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-bold">@date.Day</span>
+
+                                @if (date.Date == DateTime.Today.Date)
+                                {
+                                    <span class="badge bg-primary">今日</span>
+                                }
+                            </div>
+
+                            @if (schedules.Any())
                             {
-                                <div class="small">@GetShiftLabel(shift.ShiftType)</div>
+                                <div class="mt-1">
+                                    <span class="badge bg-success">確定 @schedules.Count 件</span>
+                                </div>
+                            }
+
+                            @if (requests.Any())
+                            {
+                                <div class="mt-1">
+                                    <span class="badge bg-warning text-dark">希望 @requests.Count 件</span>
+                                </div>
                             }
                         </td>
                     }
-                }
-            </tr>
-        }
-    </tbody>
-</table>
+                </tr>
+            }
+        </tbody>
+    </table>
 
-@if (SelectedDate != null)
-{
-    <div class="shift-modal-overlay">
-        <div class="shift-modal">
-            <h4>@SelectedDate.Value.ToString("yyyy/MM/dd") のシフト希望</h4>
+    @if (selectedDate.HasValue)
+    {
+        <div class="shift-modal-overlay">
+            <div class="shift-modal">
+                <h4>@selectedDate.Value.ToString("yyyy/MM/dd") の希望シフト</h4>
 
-            <div>
-                <select @bind="SelectedShiftTypeString">
+                <select @bind="selectedShiftType" class="form-select mb-3">
                     <option value="">選択してください</option>
                     <option value="1">早番</option>
                     <option value="2">遅番</option>
                     <option value="3">夜勤</option>
+                    <option value="4">休み</option>
                 </select>
-            </div>
 
-            <div style="margin-top:1rem;">
-                <button @onclick="SaveShift">保存</button>
-                <button @onclick="CloseModal" style="margin-left:0.5rem;">キャンセル</button>
-            </div>
+                <button class="btn btn-primary" @onclick="SaveShift">保存</button>
+                <button class="btn btn-secondary ms-2" @onclick="CloseModal">キャンセル</button>
 
-            @if (!string.IsNullOrEmpty(modalMessage))
-            {
-                <p>@modalMessage</p>
-            }
+                @if (!string.IsNullOrEmpty(modalMessage))
+                {
+                    <p class="mt-2 text-danger">@modalMessage</p>
+                }
+            </div>
         </div>
-    </div>
+    }
 }
 
 
 @code {
-    private DateOnly CurrentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
-    private List<ShiftRequestDto> Shifts = new();
-    private List<List<DateOnly?>> CalendarWeeks = new();
+    private DateTime currentMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime calendarStartDate;
+
+    private int weeksNeeded;
+
+    private List<ShiftRequestDto> ShiftRequests = new();
+    private List<ShiftScheduleDto> ShiftSchedules = new();
 
     private string? message;
-    private DateOnly? SelectedDate;
-    private string? SelectedShiftTypeString;
-    private string? modalMessage;
 
-    private static readonly string[] WeekDays = new[] { "日", "月", "火", "水", "木", "金", "土" };
+    private DateOnly? selectedDate;
+    private string? selectedShiftType;
+    private string? modalMessage;
 
     protected override async Task OnInitializedAsync()
     {
         if (!Auth.IsLoggedIn)
         {
-            Nav.NavigateTo("/login", true);  // 強制的にログインへ
+            Nav.NavigateTo("/login", true);
             return;
         }
 
-        await LoadMonthAsync();
+        RecalcMonth();
+        await LoadCalendar();
     }
 
+    private void RecalcMonth()
+    {
+        var first = currentMonth;
+        int diff = (int)first.DayOfWeek;
+        calendarStartDate = first.AddDays(-diff);
 
-    private async Task LoadMonthAsync()
+        var last = new DateTime(currentMonth.Year, currentMonth.Month,
+            DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month));
+
+        var lastShow = last.AddDays(6 - (int)last.DayOfWeek);
+        weeksNeeded = ((lastShow - calendarStartDate).Days + 1) / 7;
+    }
+
+    private async Task LoadCalendar()
     {
         message = null;
-        modalMessage = null;
 
-        Shifts = await Api.GetMyShiftRequestsForMonthAsync(CurrentMonth.Year, CurrentMonth.Month);
-        if (Shifts.Count == 0)
-        {
-            message = "シフト希望がありません。";
-        }
+        var start = DateOnly.FromDateTime(calendarStartDate);
+        var end = DateOnly.FromDateTime(calendarStartDate.AddDays(weeksNeeded * 7 - 1));
 
-        BuildCalendar();
-    }
-
-    // 余計な空行が出ないように、必要な週だけ作る
-    private void BuildCalendar()
-    {
-        CalendarWeeks.Clear();
-
-        var first = CurrentMonth;                          // 月初 (1日)
-        var last = first.AddMonths(1).AddDays(-1);        // 月末
-
-        // カレンダー開始：その月の1日の属する週の日曜日
-        int firstOffset = (int)first.DayOfWeek;            // Sunday=0
-        var firstDateToShow = first.AddDays(-firstOffset);
-
-        // カレンダー終了：月末の属する週の土曜日
-        int lastOffset = 6 - (int)last.DayOfWeek;          // Saturday=6
-        var lastDateToShow = last.AddDays(lastOffset);
-
-        var cursor = firstDateToShow;
-
-        while (cursor <= lastDateToShow)
-        {
-            var week = new List<DateOnly?>();
-
-            for (int d = 0; d < 7; d++)
-            {
-                if (cursor.Month == CurrentMonth.Month)
-                {
-                    week.Add(cursor);
-                }
-                else
-                {
-                    week.Add(null);
-                }
-
-                cursor = cursor.AddDays(1);
-            }
-
-            CalendarWeeks.Add(week);
-        }
+        ShiftRequests = await Api.GetShiftRequestsAsync(start, end);
+        ShiftSchedules = await Api.GetShiftSchedulesAsync(start, end);
     }
 
     private async Task PrevMonth()
     {
-        CurrentMonth = CurrentMonth.AddMonths(-1);
-        await LoadMonthAsync();
+        currentMonth = currentMonth.AddMonths(-1);
+        RecalcMonth();
+        await LoadCalendar();
     }
 
     private async Task NextMonth()
     {
-        CurrentMonth = CurrentMonth.AddMonths(1);
-        await LoadMonthAsync();
+        currentMonth = currentMonth.AddMonths(1);
+        RecalcMonth();
+        await LoadCalendar();
     }
 
-    private void OnDateClick(DateOnly date)
+    private void OnDateClick(DateOnly d)
     {
-        SelectedDate = date;
+        selectedDate = d;
 
-        // 既に登録済みなら初期値をセット
-        var existing = Shifts.FirstOrDefault(s => s.ShiftDate == date);
-        SelectedShiftTypeString = existing?.ShiftType.ToString() ?? "";
-
-        modalMessage = null;
+        var existing = ShiftRequests.FirstOrDefault(x => x.ShiftDate == d);
+        selectedShiftType = existing?.ShiftType.ToString() ?? "";
     }
 
     private async Task SaveShift()
     {
-        modalMessage = null;
-
-        if (SelectedDate == null)
+        if (selectedDate == null)
         {
             modalMessage = "日付が選択されていません。";
             return;
         }
 
-        if (string.IsNullOrEmpty(SelectedShiftTypeString) ||
-            !int.TryParse(SelectedShiftTypeString, out var shiftType))
+        if (string.IsNullOrEmpty(selectedShiftType) ||
+            !int.TryParse(selectedShiftType, out var type))
         {
             modalMessage = "シフト種別を選択してください。";
             return;
         }
 
-        var ok = await Api.CreateShiftRequestAsync(SelectedDate.Value, shiftType);
+        var ok = await Api.CreateShiftRequestAsync(selectedDate.Value, type);
+
         if (!ok)
         {
             modalMessage = "保存に失敗しました。";
             return;
         }
 
-        await LoadMonthAsync();   // 再読み込みして反映
-        SelectedDate = null;      // モーダルを閉じる
+        await LoadCalendar();
+        selectedDate = null;
     }
 
     private void CloseModal()
     {
-        SelectedDate = null;
+        selectedDate = null;
         modalMessage = null;
     }
 
-    private string GetShiftLabel(int shiftType) => shiftType switch
+    private string GetCellClass(DateTime date, bool isOther)
     {
-        1 => "早番",
-        2 => "遅番",
-        3 => "夜勤",
-        _ => "未設定"
-    };
+        var classes = new List<string> { "text-start", "align-top" };
+
+        if (isOther)
+            classes.Add("text-muted");
+
+        if (selectedDate.HasValue && selectedDate.Value == DateOnly.FromDateTime(date))
+            classes.Add("border-primary border-2");
+
+        return string.Join(" ", classes);
+    }
 }
