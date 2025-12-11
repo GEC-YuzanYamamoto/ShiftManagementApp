@@ -1,5 +1,5 @@
 ﻿# CalenShift（シフト管理アプリ）
-<img src="https://github.com/GEC-YuzanYamamoto/ShiftManagementApp/issues/11" width="100">
+<img src="https://github.com/GEC-YuzanYamamoto/ShiftManagementApp/issues/11#issue-3718002376" width="auto">
 従業員が希望シフトを提出し、管理者がシフトを確認・確定できる
 **シフト管理システム** です。\
 バックエンドは **ASP.NET Core / .NET 8（Aspire構成）**、フロントエンドは
