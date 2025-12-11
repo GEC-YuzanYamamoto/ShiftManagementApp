@@ -1,5 +1,6 @@
 ﻿@page "/shift-calendar"
 @using ShiftFrontend.Models
+@using System.Text
 @inject ShiftFrontend.Services.ShiftApiClient Api
 @inject ShiftFrontend.Services.AuthState Auth
 @inject NavigationManager Nav
@@ -53,6 +54,7 @@ else
                         bool isOther = date.Month != currentMonth.Month;
 
                         <td class="@GetCellClass(date, isOther) calendar-cell"
+                            title="@GetDayTooltip(date, requests, schedules)"
                             @onclick="@(() => OnDateClick(d))"
                             style="cursor:pointer; vertical-align:top;">
 
@@ -127,6 +129,10 @@ else
     private string? selectedShiftType;
     private string? modalMessage;
 
+    private List<UserDto> users = new();
+    private Dictionary<int, string> userNameMap = new();
+
+
     protected override async Task OnInitializedAsync()
     {
         if (!Auth.IsLoggedIn)
@@ -135,9 +141,38 @@ else
             return;
         }
 
+        await LoadUsers();
+
         RecalcMonth();
         await LoadCalendar();
     }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            users = await Api.GetUsersAsync();
+            userNameMap = users.ToDictionary(u => u.Id, u => u.Name);
+        }
+        catch
+        {
+            users = new();
+            userNameMap = new();
+        }
+    }
+
+    private string GetUserName(int userId)
+    {
+        if (Auth.Role == "Admin")
+        {
+            if (userNameMap.TryGetValue(userId, out var name))
+                return name;
+
+            return $"ID:{userId}";
+        }
+        return "";
+    }
+
 
     private void RecalcMonth()
     {
@@ -223,11 +258,94 @@ else
         var classes = new List<string> { "text-start", "align-top" };
 
         if (isOther)
+        {
             classes.Add("text-muted");
+            classes.Add("bg-light");
+        }
 
         if (selectedDate.HasValue && selectedDate.Value == DateOnly.FromDateTime(date))
             classes.Add("border-primary border-2");
 
         return string.Join(" ", classes);
+    }
+
+    private readonly Dictionary<byte, string> shiftTypeLabels = new()
+    {
+        { 1, "早番" },
+        { 2, "遅番" },
+        { 3, "夜勤" },
+        { 4, "休み" }
+    };
+
+    // ShiftType のラベルを取得
+    private string GetShiftTypeLabel(byte shiftType)
+    {
+        if (shiftTypeLabels.TryGetValue(shiftType, out var label))
+        {
+            return label;
+        }
+
+        return $"タイプ{shiftType}";
+    }
+
+    // 日付のツールチップテキストを生成
+    private string GetDayTooltip(
+    DateTime date,
+    List<ShiftRequestDto> dayRequests,
+    List<ShiftScheduleDto> daySchedules)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine(date.ToString("yyyy年MM月dd日 (ddd)"));
+
+        if (!dayRequests.Any() && !daySchedules.Any())
+        {
+            sb.Append("シフトなし");
+            return sb.ToString();
+        }
+
+        if (daySchedules.Any())
+        {
+            sb.AppendLine("[確定シフト]");
+            foreach (var s in daySchedules.OrderBy(x => x.ShiftType))
+            {
+                var name = GetUserName(s.UserId);
+
+                sb.Append("・");
+
+                if (!string.IsNullOrEmpty(name))
+                {
+                    sb.Append(name)
+                      .Append("：");
+                }
+
+                sb.Append(GetShiftTypeLabel(s.ShiftType))
+                  .AppendLine();
+
+            }
+        }
+
+        if (dayRequests.Any())
+        {
+            sb.AppendLine("[希望シフト]");
+            foreach (var r in dayRequests.OrderBy(x => x.ShiftType))
+            {
+                var name = GetUserName(r.UserId);
+
+                sb.Append("・");
+
+                if (!string.IsNullOrEmpty(name))
+                {
+                    sb.Append(name)
+                      .Append("：");
+                }
+
+                sb.Append(GetShiftTypeLabel(r.ShiftType))
+                  .AppendLine();
+
+            }
+        }
+
+        return sb.ToString();
     }
 }
