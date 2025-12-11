@@ -32,14 +32,15 @@
 
 ## 🏗 技術スタック
 
-  領域             技術
-  ---------------- ------------------------------
-  言語             C# / .NET 8
-  フレームワーク   ASP.NET Core / Blazor
-  インフラ         .NET Aspire
-  DB               PostgreSQL（EF Core）
-  認証             JWT（Bearer Token）
-  UI               Bootstrap, Blazor Components
+| 領域       | 技術 |
+|------------|-------|
+| 言語       | C# / .NET 8 |
+| フレームワーク | ASP.NET Core / Blazor |
+| インフラ   | .NET Aspire |
+| DB         | PostgreSQL（EF Core） |
+| 認証       | JWT（Bearer Token） |
+| UI         | Bootstrap / Blazor Components |
+
 
 ------------------------------------------------------------------------
 
@@ -77,7 +78,7 @@
 
 ## 🗄 データモデル概要（ER図）
 
-![ER]()
+![ER](https://github.com/user-attachments/assets/b4b39d30-20a6-4765-b959-fc0ed1400584)
 
 ------------------------------------------------------------------------
 
