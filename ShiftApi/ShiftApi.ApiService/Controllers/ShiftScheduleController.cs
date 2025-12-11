@@ -104,6 +104,9 @@ namespace ShiftApi.ApiService.Controllers
                 existing.ConfirmedAt = DateTime.UtcNow;
                 existing.ConfirmedBy = adminId;
 
+                // ★確定したので対応する希望シフトを削除
+                await DeleteRelatedRequestsAsync(dto.UserId, dto.ShiftDate);
+
                 await _db.SaveChangesAsync();
                 return Ok(ToDto(existing));
             }
@@ -118,6 +121,10 @@ namespace ShiftApi.ApiService.Controllers
             };
 
             _db.ShiftSchedules.Add(entity);
+
+            // ★新規確定でも同じく希望シフトを削除
+            await DeleteRelatedRequestsAsync(dto.UserId, dto.ShiftDate);
+
             await _db.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToDto(entity));
@@ -170,7 +177,17 @@ namespace ShiftApi.ApiService.Controllers
 
             return int.Parse(idClaim.Value);
         }
+        private async Task DeleteRelatedRequestsAsync(int userId, DateOnly shiftDate)
+        {
+            var requests = await _db.ShiftRequests
+                .Where(r => r.UserId == userId && r.ShiftDate == shiftDate)
+                .ToListAsync();
 
+            if (requests.Count > 0)
+            {
+                _db.ShiftRequests.RemoveRange(requests);
+            }
+        }
         private static ShiftScheduleDto ToDto(ShiftSchedule s) =>
             new()
             {

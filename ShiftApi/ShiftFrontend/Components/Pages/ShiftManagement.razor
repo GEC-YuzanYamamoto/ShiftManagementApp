@@ -133,7 +133,7 @@ else
 
                     @if (!listRequests.Any() && !listSchedules.Any())
                     {
-                        <p>この日には希望も確定シフトもありません。</p>
+                        <p>この日には希望シフトも確定シフトもありません。</p>
                     }
                     else
                     {
@@ -480,8 +480,6 @@ else
                 message = "シフト確定に失敗しました。";
                 return;
             }
-
-            await Api.MarkRequestAsApprovedAsync(selectedRequest.Id);
 
             message = "シフトを確定しました。";
 
