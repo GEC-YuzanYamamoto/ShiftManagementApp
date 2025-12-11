@@ -2,6 +2,8 @@
 <img src="https://github.com/user-attachments/assets/14c92894-0535-44ca-a64e-d31c77d9bd4f" width="auto">
 従業員が希望シフトを提出し、管理者がシフトを確認・確定できるシフト管理システムです。
 
+カレンダー表示でユーザーが使いやすいように工夫しました。
+
 バックエンドは ASP.NET Core / .NET 8（Aspire構成）、フロントエンドは Blazor（Interactive Server）、データベースは PostgreSQL を使用しています。
 
 ------------------------------------------------------------------------
@@ -11,7 +13,7 @@
 ### 👤 認証・ユーザー管理
 
 -   JWT によるログイン／ログアウト
--   管理者（Admin）と一般ユーザー（User）のロール分け
+-   管理者（Admin）と一般ユーザー（Staff）のロール分け
 -   管理者のみユーザー一覧の閲覧・追加・削除
 
 ### 🗓 シフトカレンダー（一般ユーザー）
@@ -75,10 +77,44 @@
     dotnet run
 
 ------------------------------------------------------------------------
+## 🗄 データモデル概要
 
-## 🗄 データモデル概要（ER図）
+### Users
 
-![ER](https://github.com/user-attachments/assets/b4b39d30-20a6-4765-b959-fc0ed1400584)
+| Column        | Type   |
+|---------------|--------|
+| Id            | int    |
+| Name          | string |
+| Email         | string |
+| PasswordHash  | string |
+| Role          | byte   |
+
+---
+
+### ShiftRequests（希望シフト）
+
+| Column     | Type     |
+|------------|----------|
+| Id         | int      |
+| UserId     | int      |
+| ShiftDate  | DateOnly |
+| ShiftType  | byte     |
+| Status     | byte     |
+| CreatedAt  | DateTime |
+| UpdatedAt  | DateTime |
+
+---
+
+### ShiftSchedules（確定シフト）
+
+| Column     | Type     |
+|------------|----------|
+| Id         | int      |
+| UserId     | int      |
+| ShiftDate  | DateOnly |
+| ShiftType  | byte     |
+| ConfirmedAt | DateTime |
+| ConfirmedBy | int      |
 
 ------------------------------------------------------------------------
 
