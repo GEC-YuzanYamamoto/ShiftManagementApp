@@ -1,10 +1,8 @@
 ﻿# CalenShift（シフト管理アプリ）
-<img src="https://github.com/GEC-YuzanYamamoto/ShiftManagementApp/issues/11#issue-3718002376" width="auto">
-従業員が希望シフトを提出し、管理者がシフトを確認・確定できる
-**シフト管理システム** です。\
-バックエンドは **ASP.NET Core / .NET 8（Aspire構成）**、フロントエンドは
-**Blazor（Interactive Server）**、\
-データベースは **PostgreSQL** を使用しています。
+<img src="https://github.com/user-attachments/assets/14c92894-0535-44ca-a64e-d31c77d9bd4f" width="auto">
+従業員が希望シフトを提出し、管理者がシフトを確認・確定できるシフト管理システムです。
+
+バックエンドは ASP.NET Core / .NET 8（Aspire構成）、フロントエンドは Blazor（Interactive Server）、データベースは PostgreSQL を使用しています。
 
 ------------------------------------------------------------------------
 
@@ -77,37 +75,9 @@
 
 ------------------------------------------------------------------------
 
-## 🗄 データモデル概要
+## 🗄 データモデル概要（ER図）
 
-### Users
-
-  Column         Type
-  -------------- --------
-  Id             int
-  Name           string
-  Email          string
-  PasswordHash   string
-  Role           string
-
-### ShiftRequests（希望シフト）
-
-  Column      Type
-  ----------- ----------
-  Id          int
-  UserId      int
-  ShiftDate   DateOnly
-  StartTime   TimeOnly
-  EndTime     TimeOnly
-
-### ShiftSchedules（確定シフト）
-
-  Column      Type
-  ----------- ----------
-  Id          int
-  UserId      int
-  ShiftDate   DateOnly
-  StartTime   TimeOnly
-  EndTime     TimeOnly
+![ER]()
 
 ------------------------------------------------------------------------
 
