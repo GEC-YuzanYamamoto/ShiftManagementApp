@@ -243,6 +243,14 @@ public class ShiftApiClient
         return GetListSafeAsync<ShiftScheduleDto>(url);
     }
 
+    public async Task<bool> UpdateShiftScheduleAsync(int scheduleId, byte shiftType)
+    {
+        var dto = new UpdateShiftScheduleDto { ShiftType = shiftType };
+
+        var res = await _http.PutAsJsonAsync($"shift-schedules/{scheduleId}", dto);
+        return res.IsSuccessStatusCode;
+    }
+
     public async Task MarkRequestAsApprovedAsync(int requestId)
     {
         var response = await _http.PostAsync($"shift-requests/{requestId}/approve", content: null);

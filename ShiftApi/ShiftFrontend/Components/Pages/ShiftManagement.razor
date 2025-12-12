@@ -74,7 +74,6 @@ else
                                 title="@GetDayTooltip(date, dayRequests, daySchedules)"
                                 style="cursor:pointer; vertical-align:top;">
 
-
                                 <div class="d-flex justify-content-between">
                                     <span class="fw-bold">@date.Day</span>
                                     @if (date.Date == DateTime.Today.Date)
@@ -137,14 +136,21 @@ else
                                     <tr>
                                         <th>スタッフ</th>
                                         <th>シフト種別</th>
+                                        <th>操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var s in listSchedules)
                                     {
-                                        <tr>
+                                        <tr class="@(selectedSchedule?.Id == s.Id ? "table-primary" : "")">
                                             <td>@GetUserName(s.UserId)</td>
                                             <td>@GetShiftTypeLabel(s.ShiftType)</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary"
+                                                        @onclick="@(() => OnSelectSchedule(s))">
+                                                    変更
+                                                </button>
+                                            </td>
                                         </tr>
                                     }
                                 </tbody>
@@ -181,6 +187,9 @@ else
                         }
                     }
 
+                    @* -----------------------------
+                       希望シフト：承認/変更（既存）
+                       ----------------------------- *@
                     @if (selectedRequest is not null)
                     {
                         <hr />
@@ -218,6 +227,44 @@ else
                             </button>
                         </div>
                     }
+
+                    @* -----------------------------
+                       ★確定シフト：変更（追加）
+                       ----------------------------- *@
+                    @if (selectedSchedule is not null)
+                    {
+                        <hr />
+                        <h6>確定シフトの変更</h6>
+
+                        <p class="mb-1">スタッフ：@GetUserName(selectedSchedule.UserId)</p>
+                        <p class="mb-2">日付：@selectedSchedule.ShiftDate.ToString("yyyy年MM月dd日")</p>
+
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label">変更後のシフト種別</label>
+                                <select class="form-select" @bind="editScheduleShiftType">
+                                    @foreach (var kv in shiftTypeLabels)
+                                    {
+                                        <option value="@kv.Key">@kv.Value (@kv.Key)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button class="btn btn-primary me-2"
+                                    @onclick="UpdateSchedule"
+                                    disabled="@isSaving">
+                                @(isSaving ? "処理中..." : "確定シフトを更新")
+                            </button>
+
+                            <button class="btn btn-outline-secondary"
+                                    @onclick="ClearScheduleSelection"
+                                    disabled="@isSaving">
+                                選択解除
+                            </button>
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -242,9 +289,12 @@ else
     private List<ShiftScheduleDto> schedules = new();
 
     private DateTime? selectedDate;
-    private ShiftRequestDto? selectedRequest;
 
-    private byte editShiftType = 1; // 承認時に使う ShiftType
+    private ShiftRequestDto? selectedRequest;
+    private ShiftScheduleDto? selectedSchedule;
+
+    private byte editShiftType = 1;
+    private byte editScheduleShiftType = 1;
 
     private bool isSaving = false;
 
@@ -277,6 +327,11 @@ else
         currentMonth = currentMonth.AddMonths(-1);
         selectedDate = null;
 
+        selectedRequest = null;
+        selectedSchedule = null;
+        editShiftType = 1;
+        editScheduleShiftType = 1;
+
         CalcCalendarStart();
         await LoadCalendarData();
     }
@@ -287,21 +342,37 @@ else
         currentMonth = currentMonth.AddMonths(1);
         selectedDate = null;
 
+        selectedRequest = null;
+        selectedSchedule = null;
+        editShiftType = 1;
+        editScheduleShiftType = 1;
+
         CalcCalendarStart();
         await LoadCalendarData();
-
     }
     private void OnSelectDate(DateTime date)
     {
         selectedDate = date.Date;
+
+        // 日付選択時に状態をクリア（事故防止）
         selectedRequest = null;
+        selectedSchedule = null;
         editShiftType = 1;
+        editScheduleShiftType = 1;
     }
     private void OnSelectRequest(ShiftRequestDto req)
     {
         selectedRequest = req;
+        selectedSchedule = null; // ★競合防止
         editShiftType = req.ShiftType; // デフォルトは希望と同じ ShiftType
     }
+    private void OnSelectSchedule(ShiftScheduleDto s)
+    {
+        selectedSchedule = s;
+        selectedRequest = null; // ★競合防止
+        editScheduleShiftType = s.ShiftType;
+    }
+    // 希望 → 確定
     private async Task ApproveWithEdit()
     {
         if (selectedRequest is null)
@@ -345,10 +416,48 @@ else
             isSaving = false;
         }
     }
+    // 確定シフトの変更
+    private async Task UpdateSchedule()
+    {
+        if (selectedSchedule is null) return;
+
+        message = null;
+        isSaving = true;
+
+        try
+        {
+            var ok = await Api.UpdateShiftScheduleAsync(selectedSchedule.Id, editScheduleShiftType);
+            if (!ok)
+            {
+                message = "確定シフトの更新に失敗しました。";
+                return;
+            }
+
+            message = "確定シフトを更新しました。";
+
+            selectedSchedule = null;
+            editScheduleShiftType = 1;
+
+            await LoadCalendarData();
+        }
+        catch (Exception ex)
+        {
+            message = $"エラー: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
     private void ClearSelection()
     {
         selectedRequest = null;
         editShiftType = 1;
+    }
+    private void ClearScheduleSelection()
+    {
+        selectedSchedule = null;
+        editScheduleShiftType = 1;
     }
 
     // --- データ取得 ---
@@ -376,20 +485,17 @@ else
             loadError = null;
             message = null;
 
-            // カレンダー開始日から 6週間分（42日）を取得
+            // カレンダー開始日から weeksNeeded 週分を取得
             var start = DateOnly.FromDateTime(calendarStartDate);
             var end = DateOnly.FromDateTime(calendarStartDate.AddDays(weeksNeeded * 7 - 1));
 
-            // まず全部取得
+            // 希望（未承認のみ）
             var allRequests = await Api.GetShiftRequestsAsync(start, end);
-
-            //「未承認のみ」に絞る（Status の値は実際の定義に合わせて）
-            // 例: 0 = 未承認（Pending）
             requests = allRequests
                 .Where(r => r.Status == 0)
                 .ToList();
 
-            // 確定シフトはそのまま
+            // 確定
             schedules = await Api.GetShiftSchedulesAsync(start, end);
 
             // 初回は今日が範囲内なら今日、そうでなければ当月1日
@@ -416,7 +522,6 @@ else
             isLoaded = true;
         }
     }
-
 
     // --- カレンダー計算・表示ロジック ---
     // 当月1日の曜日から、カレンダー表示開始（日曜日）を求める
