@@ -1,5 +1,6 @@
 ﻿@page "/shift-management"
 @using ShiftFrontend.Models
+@using ShiftFrontend.Utils
 @using System.Text
 @inject ShiftFrontend.Services.ShiftApiClient Api
 @inject ShiftFrontend.Services.AuthState Auth
@@ -177,7 +178,7 @@ else
                                             <td>
                                                 <button class="btn btn-sm btn-outline-primary"
                                                         @onclick="@(() => OnSelectRequest(r))">
-                                                    選択
+                                                    承認
                                                 </button>
                                             </td>
                                         </tr>
@@ -314,7 +315,7 @@ else
             return;
         }
 
-        CalcCalendarStart();   // 可変式の開始日を計算
+        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
         await LoadUsers();
         await LoadCalendarData();
     }
@@ -332,7 +333,7 @@ else
         editShiftType = 1;
         editScheduleShiftType = 1;
 
-        CalcCalendarStart();
+        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
         await LoadCalendarData();
     }
     private async Task NextMonth()
@@ -347,7 +348,7 @@ else
         editShiftType = 1;
         editScheduleShiftType = 1;
 
-        CalcCalendarStart();
+        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
         await LoadCalendarData();
     }
     private void OnSelectDate(DateTime date)
@@ -486,8 +487,7 @@ else
             message = null;
 
             // カレンダー開始日から weeksNeeded 週分を取得
-            var start = DateOnly.FromDateTime(calendarStartDate);
-            var end = DateOnly.FromDateTime(calendarStartDate.AddDays(weeksNeeded * 7 - 1));
+            var (start, end) = CalendarUtil.GetDisplayRange(calendarStartDate, weeksNeeded);
 
             // 希望（未承認のみ）
             var allRequests = await Api.GetShiftRequestsAsync(start, end);
@@ -524,19 +524,6 @@ else
     }
 
     // --- カレンダー計算・表示ロジック ---
-    // 当月1日の曜日から、カレンダー表示開始（日曜日）を求める
-    private void CalcCalendarStart()
-    {
-        var first = currentMonth;              // 当月1日
-        int diff = (int)first.DayOfWeek;       // 日=0, 月=1,...
-        calendarStartDate = first.AddDays(-diff);
-
-        var lastDay = new DateTime(currentMonth.Year, currentMonth.Month,
-        DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month));
-
-        var lastDayOfCalendar = lastDay.AddDays(-(int)lastDay.DayOfWeek + 6);
-        weeksNeeded = ((lastDayOfCalendar - calendarStartDate).Days + 1) / 7;
-    }
     // 日付セルのCSSクラスを取得
     private string GetCellClass(DateTime date, bool isOtherMonth)
     {
