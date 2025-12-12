@@ -15,4 +15,9 @@
         public DateOnly ShiftDate { get; set; }
         public byte ShiftType { get; set; }
     }
+
+    public class UpdateShiftScheduleDto
+    {
+        public byte ShiftType { get; set; }
+    }
 }
