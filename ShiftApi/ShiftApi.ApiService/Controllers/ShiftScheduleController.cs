@@ -166,17 +166,6 @@ namespace ShiftApi.ApiService.Controllers
             return NoContent();
         }
 
-        // ヘルパー
-        private int GetCurrentUserId()
-        {
-            var idClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
-            if (idClaim == null)
-            {
-                throw new InvalidOperationException("UserId claim (NameIdentifier) が見つかりません。");
-            }
-
-            return int.Parse(idClaim.Value);
-        }
         private async Task DeleteRelatedRequestsAsync(int userId, DateOnly shiftDate)
         {
             var requests = await _db.ShiftRequests
@@ -187,6 +176,18 @@ namespace ShiftApi.ApiService.Controllers
             {
                 _db.ShiftRequests.RemoveRange(requests);
             }
+        }
+
+        // ヘルパー
+        private int GetCurrentUserId()
+        {
+            var idClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+            if (idClaim == null)
+            {
+                throw new InvalidOperationException("UserId claim (NameIdentifier) が見つかりません。");
+            }
+
+            return int.Parse(idClaim.Value);
         }
         private static ShiftScheduleDto ToDto(ShiftSchedule s) =>
             new()
