@@ -1,5 +1,6 @@
 ﻿@page "/shift-calendar"
 @using ShiftFrontend.Models
+@using ShiftFrontend.Utils
 @using System.Text
 @inject ShiftFrontend.Services.ShiftApiClient Api
 @inject ShiftFrontend.Services.AuthState Auth
@@ -150,7 +151,7 @@ else
 
         await LoadUsers();
 
-        CalcCalendarStart();
+        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
         await LoadCalendar();
     }
 
@@ -158,13 +159,13 @@ else
     private async Task PrevMonth()
     {
         currentMonth = currentMonth.AddMonths(-1);
-        CalcCalendarStart();
+        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
         await LoadCalendar();
     }
     private async Task NextMonth()
     {
         currentMonth = currentMonth.AddMonths(1);
-        CalcCalendarStart();
+        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
         await LoadCalendar();
     }
     private async Task SaveShift()
@@ -224,27 +225,13 @@ else
     {
         message = null;
 
-        var start = DateOnly.FromDateTime(calendarStartDate);
-        var end = DateOnly.FromDateTime(calendarStartDate.AddDays(weeksNeeded * 7 - 1));
+        var (start, end) = CalendarUtil.GetDisplayRange(calendarStartDate, weeksNeeded);
 
         ShiftRequests = await Api.GetShiftRequestsAsync(start, end);
         ShiftSchedules = await Api.GetShiftSchedulesAsync(start, end);
     }
 
     // --- カレンダー計算・表示ロジック ---
-    // カレンダーの開始日と週数を再計算
-    private void CalcCalendarStart()
-    {
-        var first = currentMonth;              // 当月1日
-        int diff = (int)first.DayOfWeek;       // 日=0, 月=1,...
-        calendarStartDate = first.AddDays(-diff);
-
-        var lastDay = new DateTime(currentMonth.Year, currentMonth.Month,
-        DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month));
-
-        var lastDayOfCalendar = lastDay.AddDays(-(int)lastDay.DayOfWeek + 6);
-        weeksNeeded = ((lastDayOfCalendar - calendarStartDate).Days + 1) / 7;
-    }
     private string GetCellClass(DateTime date, bool isOther)
     {
         var classes = new List<string> { "text-start", "align-top" };
