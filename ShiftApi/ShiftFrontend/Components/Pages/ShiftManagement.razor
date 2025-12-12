@@ -19,15 +19,7 @@ else if (Auth.Role != "Admin")
 }
 else
 {
-    @if (!isLoaded)
-    {
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <button class="btn btn-outline-secondary btn-sm" @onclick="PrevMonth">＜ 前月</button>
-            <h4 class="m-0">@currentMonth.ToString("yyyy年MM月")</h4>
-            <button class="btn btn-outline-secondary btn-sm" @onclick="NextMonth">翌月 ＞</button>
-        </div>
-    }
-    else if (!string.IsNullOrEmpty(loadError))
+    @if (!string.IsNullOrEmpty(loadError))
     {
         <p style="color:red;">エラー: @loadError</p>
     }
@@ -241,7 +233,6 @@ else
     private Dictionary<int, string> userNameMap = new();
 
     private int weeksNeeded;
-
     // 当月1日
     private DateTime currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     // カレンダー表示開始（日曜日始まり）
@@ -257,7 +248,6 @@ else
 
     private bool isSaving = false;
 
-    // ShiftType のラベル定義
     private readonly Dictionary<byte, string> shiftTypeLabels = new()
     {
         { 1, "早番" },
@@ -266,7 +256,7 @@ else
         { 4, "休み" }
     };
 
-    // 日付セルのツールチップを生成
+    // --- ライフサイクル ---
     protected override async Task OnInitializedAsync()
     {
         if (!Auth.IsLoggedIn || Auth.Role != "Admin")
@@ -279,63 +269,89 @@ else
         await LoadCalendarData();
     }
 
-    private string GetDayTooltip(
-    DateTime date,
-    List<ShiftRequestDto> dayRequests,
-    List<ShiftScheduleDto> daySchedules)
+    // --- 月移動・選択など UI イベント ---
+    private async Task PrevMonth()
     {
-        var sb = new StringBuilder();
+        if (!isLoaded) return;
 
-        // 1行目：日付
-        sb.AppendLine(date.ToString("yyyy年MM月dd日 (ddd)"));
+        currentMonth = currentMonth.AddMonths(-1);
+        selectedDate = null;
 
-        if (!dayRequests.Any() && !daySchedules.Any())
+        CalcCalendarStart();
+        await LoadCalendarData();
+    }
+    private async Task NextMonth()
+    {
+        if (!isLoaded) return;
+
+        currentMonth = currentMonth.AddMonths(1);
+        selectedDate = null;
+
+        CalcCalendarStart();
+        await LoadCalendarData();
+
+    }
+    private void OnSelectDate(DateTime date)
+    {
+        selectedDate = date.Date;
+        selectedRequest = null;
+        editShiftType = 1;
+    }
+    private void OnSelectRequest(ShiftRequestDto req)
+    {
+        selectedRequest = req;
+        editShiftType = req.ShiftType; // デフォルトは希望と同じ ShiftType
+    }
+    private async Task ApproveWithEdit()
+    {
+        if (selectedRequest is null)
         {
-            sb.Append("シフトなし");
-            return sb.ToString();
+            return;
         }
 
-        if (daySchedules.Any())
+        message = null;
+        isSaving = true;
+
+        try
         {
-            sb.AppendLine("[確定シフト]");
-            foreach (var s in daySchedules.OrderBy(x => x.ShiftType))
+            var dto = new ShiftManagementDto
             {
-                sb.Append("・")
-                  .Append(GetUserName(s.UserId))
-                  .Append("：")
-                  .AppendLine(GetShiftTypeLabel(s.ShiftType));
-            }
-        }
+                UserId = selectedRequest.UserId,
+                ShiftDate = selectedRequest.ShiftDate,
+                ShiftType = editShiftType
+            };
 
-        if (dayRequests.Any())
-        {
-            sb.AppendLine("[希望シフト]");
-            foreach (var r in dayRequests.OrderBy(x => x.ShiftType))
+            var ok = await Api.CreateShiftAsync(dto);
+
+            if (!ok)
             {
-                sb.Append("・")
-                  .Append(GetUserName(r.UserId))
-                  .Append("：")
-                  .AppendLine(GetShiftTypeLabel(r.ShiftType));
+                message = "シフト確定に失敗しました。";
+                return;
             }
-        }
 
-        return sb.ToString();
+            message = "シフトを確定しました。";
+
+            selectedRequest = null;
+            editShiftType = 1;
+
+            await LoadCalendarData();
+        }
+        catch (Exception ex)
+        {
+            message = $"エラー: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+    private void ClearSelection()
+    {
+        selectedRequest = null;
+        editShiftType = 1;
     }
 
-    // 当月1日の曜日から、カレンダー表示開始（日曜日）を求める
-    private void CalcCalendarStart()
-    {
-        var first = currentMonth;              // 当月1日
-        int diff = (int)first.DayOfWeek;       // 日=0, 月=1,...
-        calendarStartDate = first.AddDays(-diff);
-
-        var lastDay = new DateTime(currentMonth.Year, currentMonth.Month,
-        DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month));
-
-        var lastDayOfCalendar = lastDay.AddDays(-(int)lastDay.DayOfWeek + 6);
-        weeksNeeded = ((lastDayOfCalendar - calendarStartDate).Days + 1) / 7;
-    }
-
+    // --- データ取得 ---
     // ユーザー一覧を取得してマップを作成
     private async Task LoadUsers()
     {
@@ -351,18 +367,6 @@ else
             userNameMap = new();
         }
     }
-
-    // ユーザーIDから名前を取得
-    private string GetUserName(int userId)
-    {
-        if (userNameMap.TryGetValue(userId, out var name))
-        {
-            return name;
-        }
-
-        return $"ID:{userId}";
-    }
-
     // カレンダー範囲のシフト希望＆確定シフトを取得
     private async Task LoadCalendarData()
     {
@@ -413,98 +417,21 @@ else
         }
     }
 
-    // 前月移動
-    private async Task PrevMonth()
+
+    // --- カレンダー計算・表示ロジック ---
+    // 当月1日の曜日から、カレンダー表示開始（日曜日）を求める
+    private void CalcCalendarStart()
     {
-        if (!isLoaded) return;
+        var first = currentMonth;              // 当月1日
+        int diff = (int)first.DayOfWeek;       // 日=0, 月=1,...
+        calendarStartDate = first.AddDays(-diff);
 
-        currentMonth = currentMonth.AddMonths(-1);
-        selectedDate = null;
+        var lastDay = new DateTime(currentMonth.Year, currentMonth.Month,
+        DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month));
 
-        CalcCalendarStart();
-        await LoadCalendarData();
+        var lastDayOfCalendar = lastDay.AddDays(-(int)lastDay.DayOfWeek + 6);
+        weeksNeeded = ((lastDayOfCalendar - calendarStartDate).Days + 1) / 7;
     }
-
-    // 次月移動
-    private async Task NextMonth()
-    {
-        if (!isLoaded) return;
-
-        currentMonth = currentMonth.AddMonths(1);
-        selectedDate = null;
-
-        CalcCalendarStart();
-        await LoadCalendarData();
-
-    }
-    
-    // 日付選択
-    private void OnSelectDate(DateTime date)
-    {
-        selectedDate = date.Date;
-        selectedRequest = null;
-        editShiftType = 1;
-    }
-
-    // シフト希望選択
-    private void OnSelectRequest(ShiftRequestDto req)
-    {
-        selectedRequest = req;
-        editShiftType = req.ShiftType; // デフォルトは希望と同じ ShiftType
-    }
-
-    // シフト希望を承認して確定（編集後）
-    private async Task ApproveWithEdit()
-    {
-        if (selectedRequest is null)
-        {
-            return;
-        }
-
-        message = null;
-        isSaving = true;
-
-        try
-        {
-            var dto = new ShiftManagementDto
-            {
-                UserId = selectedRequest.UserId,
-                ShiftDate = selectedRequest.ShiftDate,
-                ShiftType = editShiftType
-            };
-
-            var ok = await Api.CreateShiftAsync(dto);
-
-            if (!ok)
-            {
-                message = "シフト確定に失敗しました。";
-                return;
-            }
-
-            message = "シフトを確定しました。";
-
-            selectedRequest = null;
-            editShiftType = 1;
-
-            await LoadCalendarData();
-        }
-        catch (Exception ex)
-        {
-            message = $"エラー: {ex.Message}";
-        }
-        finally
-        {
-            isSaving = false;
-        }
-    }
-
-    // 選択解除
-    private void ClearSelection()
-    {
-        selectedRequest = null;
-        editShiftType = 1;
-    }
-
     // 日付セルのCSSクラスを取得
     private string GetCellClass(DateTime date, bool isOtherMonth)
     {
@@ -524,7 +451,6 @@ else
 
         return string.Join(" ", classes);
     }
-
     // ShiftType のラベルを取得
     private string GetShiftTypeLabel(byte shiftType)
     {
@@ -534,5 +460,58 @@ else
         }
 
         return $"タイプ{shiftType}";
+    }
+    // ユーザーIDから名前を取得
+    private string GetUserName(int userId)
+    {
+        if (userNameMap.TryGetValue(userId, out var name))
+        {
+            return name;
+        }
+
+        return $"ID:{userId}";
+    }
+    // 日付セルのツールチップ内容を取得
+    private string GetDayTooltip(
+    DateTime date,
+    List<ShiftRequestDto> dayRequests,
+    List<ShiftScheduleDto> daySchedules)
+    {
+        var sb = new StringBuilder();
+
+        // 1行目：日付
+        sb.AppendLine(date.ToString("yyyy年MM月dd日 (ddd)"));
+
+        if (!dayRequests.Any() && !daySchedules.Any())
+        {
+            sb.Append("シフトなし");
+            return sb.ToString();
+        }
+
+        if (daySchedules.Any())
+        {
+            sb.AppendLine("[確定シフト]");
+            foreach (var s in daySchedules.OrderBy(x => x.ShiftType))
+            {
+                sb.Append("・")
+                  .Append(GetUserName(s.UserId))
+                  .Append("：")
+                  .AppendLine(GetShiftTypeLabel(s.ShiftType));
+            }
+        }
+
+        if (dayRequests.Any())
+        {
+            sb.AppendLine("[希望シフト]");
+            foreach (var r in dayRequests.OrderBy(x => x.ShiftType))
+            {
+                sb.Append("・")
+                  .Append(GetUserName(r.UserId))
+                  .Append("：")
+                  .AppendLine(GetShiftTypeLabel(r.ShiftType));
+            }
+        }
+
+        return sb.ToString();
     }
 }

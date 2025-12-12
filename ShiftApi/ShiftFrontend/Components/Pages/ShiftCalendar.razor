@@ -124,7 +124,6 @@ else
     private List<ShiftScheduleDto> ShiftSchedules = new();
 
     private string? message;
-
     private DateOnly? selectedDate;
     private string? selectedShiftType;
     private string? modalMessage;
@@ -132,7 +131,15 @@ else
     private List<UserDto> users = new();
     private Dictionary<int, string> userNameMap = new();
 
+    private readonly Dictionary<byte, string> shiftTypeLabels = new()
+    {
+        { 1, "早番" },
+        { 2, "遅番" },
+        { 3, "夜勤" },
+        { 4, "休み" }
+    };
 
+    // --- ライフサイクル ---
     protected override async Task OnInitializedAsync()
     {
         if (!Auth.IsLoggedIn)
@@ -143,83 +150,23 @@ else
 
         await LoadUsers();
 
-        RecalcMonth();
+        CalcCalendarStart();
         await LoadCalendar();
     }
 
-    private async Task LoadUsers()
-    {
-        try
-        {
-            users = await Api.GetUsersAsync();
-            userNameMap = users.ToDictionary(u => u.Id, u => u.Name);
-        }
-        catch
-        {
-            users = new();
-            userNameMap = new();
-        }
-    }
-
-    private string GetUserName(int userId)
-    {
-        if (Auth.Role == "Admin")
-        {
-            if (userNameMap.TryGetValue(userId, out var name))
-                return name;
-
-            return $"ID:{userId}";
-        }
-        return "";
-    }
-
-
-    private void RecalcMonth()
-    {
-        var first = currentMonth;
-        int diff = (int)first.DayOfWeek;
-        calendarStartDate = first.AddDays(-diff);
-
-        var last = new DateTime(currentMonth.Year, currentMonth.Month,
-            DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month));
-
-        var lastShow = last.AddDays(6 - (int)last.DayOfWeek);
-        weeksNeeded = ((lastShow - calendarStartDate).Days + 1) / 7;
-    }
-
-    private async Task LoadCalendar()
-    {
-        message = null;
-
-        var start = DateOnly.FromDateTime(calendarStartDate);
-        var end = DateOnly.FromDateTime(calendarStartDate.AddDays(weeksNeeded * 7 - 1));
-
-        ShiftRequests = await Api.GetShiftRequestsAsync(start, end);
-        ShiftSchedules = await Api.GetShiftSchedulesAsync(start, end);
-    }
-
+    // --- 月移動・選択など UI イベント ---
     private async Task PrevMonth()
     {
         currentMonth = currentMonth.AddMonths(-1);
-        RecalcMonth();
+        CalcCalendarStart();
         await LoadCalendar();
     }
-
     private async Task NextMonth()
     {
         currentMonth = currentMonth.AddMonths(1);
-        RecalcMonth();
+        CalcCalendarStart();
         await LoadCalendar();
     }
-
-    private void OnDateClick(DateOnly d)
-    {
-        selectedDate = d;
-
-        var existing = ShiftRequests.FirstOrDefault(x => x.ShiftDate == d);
-        selectedShiftType = existing?.ShiftType.ToString() ?? "";
-    }
-
     private async Task SaveShift()
     {
         if (selectedDate == null)
@@ -246,13 +193,58 @@ else
         await LoadCalendar();
         selectedDate = null;
     }
+    private void OnDateClick(DateOnly d)
+    {
+        selectedDate = d;
 
+        var existing = ShiftRequests.FirstOrDefault(x => x.ShiftDate == d);
+        selectedShiftType = existing?.ShiftType.ToString() ?? "";
+    }
     private void CloseModal()
     {
         selectedDate = null;
         modalMessage = null;
     }
 
+    // --- データ取得 ---
+    private async Task LoadUsers()
+    {
+        try
+        {
+            users = await Api.GetUsersAsync();
+            userNameMap = users.ToDictionary(u => u.Id, u => u.Name);
+        }
+        catch
+        {
+            users = new();
+            userNameMap = new();
+        }
+    }
+    private async Task LoadCalendar()
+    {
+        message = null;
+
+        var start = DateOnly.FromDateTime(calendarStartDate);
+        var end = DateOnly.FromDateTime(calendarStartDate.AddDays(weeksNeeded * 7 - 1));
+
+        ShiftRequests = await Api.GetShiftRequestsAsync(start, end);
+        ShiftSchedules = await Api.GetShiftSchedulesAsync(start, end);
+    }
+
+    // --- カレンダー計算・表示ロジック ---
+    // カレンダーの開始日と週数を再計算
+    private void CalcCalendarStart()
+    {
+        var first = currentMonth;              // 当月1日
+        int diff = (int)first.DayOfWeek;       // 日=0, 月=1,...
+        calendarStartDate = first.AddDays(-diff);
+
+        var lastDay = new DateTime(currentMonth.Year, currentMonth.Month,
+        DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month));
+
+        var lastDayOfCalendar = lastDay.AddDays(-(int)lastDay.DayOfWeek + 6);
+        weeksNeeded = ((lastDayOfCalendar - calendarStartDate).Days + 1) / 7;
+    }
     private string GetCellClass(DateTime date, bool isOther)
     {
         var classes = new List<string> { "text-start", "align-top" };
@@ -268,15 +260,17 @@ else
 
         return string.Join(" ", classes);
     }
-
-    private readonly Dictionary<byte, string> shiftTypeLabels = new()
+    private string GetUserName(int userId)
     {
-        { 1, "早番" },
-        { 2, "遅番" },
-        { 3, "夜勤" },
-        { 4, "休み" }
-    };
+        if (Auth.Role == "Admin")
+        {
+            if (userNameMap.TryGetValue(userId, out var name))
+                return name;
 
+            return $"ID:{userId}";
+        }
+        return "";
+    }
     // ShiftType のラベルを取得
     private string GetShiftTypeLabel(byte shiftType)
     {
@@ -287,7 +281,6 @@ else
 
         return $"タイプ{shiftType}";
     }
-
     // 日付のツールチップテキストを生成
     private string GetDayTooltip(
     DateTime date,

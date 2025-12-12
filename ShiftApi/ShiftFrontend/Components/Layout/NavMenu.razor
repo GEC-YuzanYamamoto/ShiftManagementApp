@@ -2,7 +2,6 @@
 @inject ShiftFrontend.Services.ShiftApiClient Api
 @inject NavigationManager Nav
 
-
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">CalenShift</a>
@@ -13,22 +12,16 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
-        @if(!Auth.IsLoggedIn)
+        @if (!Auth.IsLoggedIn)
         {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="login" Match="NavLinkMatch.All">
-                    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>ログイン
+                    ログイン
                 </NavLink>
             </div>
         }
         else
         {
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="test-api">
-                     APIテスト
-                </NavLink>
-            </div>
-
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="shift-calendar">
                     シフトカレンダー
@@ -50,13 +43,14 @@
                 </div>
             }
         }
+
         @if (Auth.IsLoggedIn)
         {
-        <div class="nav-item px-3 logout-item">
-            <button class="nav-link btn btn-link" @onclick="Logout">
-                ログアウト
-            </button>
-        </div>
+            <div class="nav-item px-3 logout-item">
+                <button class="nav-link btn btn-link" @onclick="LogoutAsync">
+                    ログアウト
+                </button>
+            </div>
         }
     </nav>
 </div>
@@ -64,18 +58,18 @@
 @code {
     protected override void OnInitialized()
     {
-        Auth.OnChange += StateHasChanged;  // ← 状態変化を購読する
+        Auth.OnChange += StateHasChanged;
     }
 
     public void Dispose()
     {
-        Auth.OnChange -= StateHasChanged;  // ← 購読解除
+        Auth.OnChange -= StateHasChanged;
     }
 
-    private void Logout()
+    private async Task LogoutAsync()
     {
         Auth.Logout();
-        Api.ClearToken();
+        await Api.ClearTokenAsync();
 
         // ログアウト後はログインページへ
         Nav.NavigateTo("login", forceLoad: true);
