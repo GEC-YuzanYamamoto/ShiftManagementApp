@@ -1,0 +1,94 @@
+﻿@page "/setup"
+@inject IHttpClientFactory HttpFactory
+@inject NavigationManager Nav
+
+<h3>初期セットアップ（管理者作成）</h3>
+<hr />
+
+@if (!needsSetupLoaded)
+{
+    <p>状態確認中...</p>
+}
+else if (!needsSetup)
+{
+    <p>セットアップは完了しています。ログイン画面へ移動します。</p>
+}
+else
+{
+    <div class="mb-2">
+        <label>名前</label>
+        <input class="form-control" @bind="name" />
+    </div>
+    <div class="mb-2">
+        <label>メール</label>
+        <input class="form-control" @bind="email" />
+    </div>
+    <div class="mb-2">
+        <label>パスワード</label>
+        <input class="form-control" type="password" @bind="password" />
+    </div>
+
+    <button class="btn btn-primary" @onclick="Create">管理者を作成</button>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <p class="mt-2">@message</p>
+    }
+}
+
+@code {
+    bool needsSetupLoaded = false;
+    bool needsSetup = false;
+
+    string name = "";
+    string email = "";
+    string password = "";
+    string? message;
+
+    private HttpClient? _http;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _http = HttpFactory.CreateClient("ShiftApi");
+
+        var s = await _http.GetFromJsonAsync<SetupStatus>("setup/status");
+
+        needsSetup = s?.NeedsSetup ?? false;
+        needsSetupLoaded = true;
+
+        if (!needsSetup)
+        {
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+    }
+
+    private async Task Create()
+    {
+        if (_http is null) return;
+
+        message = null;
+
+        var res = await _http.PostAsJsonAsync("setup/admin", new
+        {
+            Name = name,
+            Email = email,
+            Password = password
+        });
+
+        if (res.IsSuccessStatusCode)
+        {
+            message = "管理者を作成しました。ログイン画面へ移動します。";
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+        else
+        {
+            var body = await res.Content.ReadAsStringAsync();
+            message = $"作成に失敗しました: {res.StatusCode} {body}";
+        }
+    }
+
+    private class SetupStatus
+    {
+        public bool NeedsSetup { get; set; }
+    }
+}
