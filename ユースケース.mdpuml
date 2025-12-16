@@ -1,0 +1,45 @@
+@startuml
+left to right direction
+actor "一般ユーザー" as User
+actor "管理者" as Admin
+
+rectangle "シフト管理アプリ" {
+  usecase "ログイン" as UC_Login
+  usecase "ログアウト" as UC_Logout
+
+  usecase "希望シフト提出" as UC_Submit
+  usecase "希望シフト修正/取消" as UC_Edit
+  usecase "確定シフト確認（カレンダー）" as UC_View
+
+  usecase "希望一覧を確認" as UC_AdminView
+  usecase "確定シフト作成" as UC_Confirm
+  usecase "確定シフト公開" as UC_Publish
+  usecase "通知" as UC_Notify
+
+  usecase "ユーザー管理" as UC_UserMgmt
+  usecase "ユーザー作成" as UC_CreateUser
+  usecase "ユーザー無効化" as UC_DisableUser
+  usecase "PWリセット/初期PW発行" as UC_ResetPw
+}
+
+User --> UC_Login
+User --> UC_Logout
+User --> UC_Submit
+User --> UC_Edit
+User --> UC_View
+
+Admin --> UC_Login
+Admin --> UC_Logout
+Admin --> UC_AdminView
+Admin --> UC_Confirm
+Admin --> UC_Publish
+Admin --> UC_UserMgmt
+
+UC_Confirm --> UC_Publish : <<include>>
+UC_Publish --> UC_Notify : <<include>>
+UC_Submit --> UC_Notify : <<include>>
+
+UC_UserMgmt --> UC_CreateUser : <<include>>
+UC_UserMgmt --> UC_DisableUser : <<include>>
+UC_UserMgmt --> UC_ResetPw : <<include>>
+@enduml

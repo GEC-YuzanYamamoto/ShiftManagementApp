@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@inherits LayoutComponentBase
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -18,3 +22,34 @@
 </body>
 
 </html>
+
+<div class="page">
+    <main>
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private static bool _checkedOnce = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        if (_checkedOnce) return;
+
+        _checkedOnce = true;
+
+        // すでに /setup にいるなら余計な遷移しない
+        if (Nav.Uri.Contains("/setup")) return;
+
+        var s = await Http.GetFromJsonAsync<SetupStatus>("setup/status");
+        if (s?.NeedsSetup == true)
+        {
+            Nav.NavigateTo("/setup", forceLoad: true);
+        }
+    }
+
+    private class SetupStatus { public bool NeedsSetup { get; set; } }
+}

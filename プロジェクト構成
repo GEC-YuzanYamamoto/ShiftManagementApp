@@ -10,9 +10,8 @@
     ShiftSchedule.cs
 
 /DTOs
-    LoginRequest.cs
-    UserCreateDto.cs
-    UserUpdateDto.cs
+    LoginDto.cs
+    CreateUserDto.cs
     ShiftRequestDto.cs
     ShiftScheduleDto.cs
 
@@ -20,5 +19,4 @@
     AppDbContext.cs
 
 /Services
-    IJwtService.cs
-    JwtService.cs
+    PasswordHasher.cs
