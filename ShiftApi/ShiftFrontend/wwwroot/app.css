@@ -42,12 +42,45 @@ h1:focus {
     color: white;
 }
 
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
+.blazor-error-boundary::after {
+    content: "An error has occurred."
+}
 
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
+}
+
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f7f9fc;
+    padding: 24px;
+}
+
+.login-wrapper {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.login-logo {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #2c3e50;
+    text-align: center;
+    transform: translateY(-24px);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 520px;
+    border-radius: 16px;
 }
 
 /* 画面全体にかぶせる「黒い半透明」のレイヤー */
@@ -84,12 +117,11 @@ h1:focus {
     vertical-align: top;
     font-size: 0.85rem; /* 全体の字もわずかに小さく */
 }
-
-    /* バッジの文字サイズも小さく */
-    .calendar-cell .badge {
-        font-size: 0.65rem;
-        padding: 0.25em 0.4em;
-    }
+/* バッジの文字サイズも小さく */
+.calendar-cell .badge {
+    font-size: 0.65rem;
+    padding: 0.25em 0.4em;
+}
 
 /* 今日マーク（背景色を少し薄め） */
 .today {
@@ -115,8 +147,8 @@ h1:focus {
         font-size: 0.75rem;
     }
 
-        .calendar-cell .badge {
-            font-size: 0.6rem;
-        }
+    .calendar-cell .badge {
+        font-size: 0.6rem;
+    }
 }
 

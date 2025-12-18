@@ -1,45 +1,103 @@
 ﻿@page "/"
 @page "/login"
+@using System.ComponentModel.DataAnnotations
 @inject ShiftFrontend.Services.ShiftApiClient Api
 @inject ShiftFrontend.Services.AuthState Auth
 @inject NavigationManager Nav
 
-<h3>ログイン</h3>
-<hr />
+<div class="login-page">
+    <div class="login-wrapper">
 
-@if (!string.IsNullOrEmpty(message))
-{
-    <p>@message</p>
-}
+        <div class="login-logo mb-4">
+            CalenShift
+        </div>
 
-<div>
-    <label>メールアドレス：</label>
-    <input @bind="email" />
+        <div class="login-card card shadow-sm">
+            <div class="card-body p-4 p-md-5">
+                <h3 class="mb-1 fw-bold">ログイン</h3>
+                <p class="text-muted mb-4">CalenShift にログインしてください</p>
+
+                <EditForm Model="model" OnValidSubmit="OnLogin">
+                    <DataAnnotationsValidator />
+
+                    @if (!string.IsNullOrEmpty(message))
+                    {
+                        <div class="alert alert-danger py-2 mb-3">
+                            @message
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">メールアドレス</label>
+                        <InputText class="form-control form-control-lg"
+                                   @bind-Value="model.Email"
+                                   placeholder="name@example.com"
+                                   disabled="@isBusy" />
+                        <ValidationMessage For="@(() => model.Email)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">パスワード</label>
+                        <InputText class="form-control form-control-lg"
+                                   type="password"
+                                   @bind-Value="model.Password"
+                                   placeholder="********"
+                                   disabled="@isBusy" />
+                        <ValidationMessage For="@(() => model.Password)" />
+                    </div>
+
+                    <button class="btn btn-primary btn-lg w-100"
+                            type="submit"
+                            disabled="@isBusy">
+                        @(isBusy ? "ログイン中..." : "ログイン")
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
 </div>
-<div>
-    <label>パスワード：</label>
-    <input type="password" @bind="password" />
-</div>
-
-<button @onclick="OnLogin">ログイン</button>
 
 @code {
-    private string email = "";
-    private string password = "";
+    private LoginModel model = new();
     private string? message;
+    private bool isBusy = false;
 
     private async Task OnLogin()
     {
-        var success = await Api.LoginAsync(email, password);
-        if (!success)
+        message = null;
+        isBusy = true;
+
+        try
         {
-            message = "ログインに失敗しました。";
-            return;
+            var success = await Api.LoginAsync(model.Email, model.Password);
+            if (!success)
+            {
+                message = "ログインに失敗しました。メールアドレスまたはパスワードをご確認ください。";
+                return;
+            }
+
+            var role = Api.CurrentRole ?? "Staff";
+            Auth.SetLogin(role, model.Email);
+
+            Nav.NavigateTo("shift-calendar");
         }
+        catch
+        {
+            message = "ログインに失敗しました。時間をおいて再度お試しください。";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
 
-        var role = Api.CurrentRole ?? "Staff";
-        Auth.SetLogin(role, email);
+    private class LoginModel
+    {
+        [Required(ErrorMessage = "メールアドレスを入力してください")]
+        [EmailAddress(ErrorMessage = "メールアドレスの形式が正しくありません")]
+        public string Email { get; set; } = "";
 
-        Nav.NavigateTo("shift-calendar");
+        [Required(ErrorMessage = "パスワードを入力してください")]
+        public string Password { get; set; } = "";
     }
 }
