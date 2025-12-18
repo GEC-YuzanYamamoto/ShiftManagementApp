@@ -151,7 +151,7 @@ else
 
         await LoadUsers();
 
-        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
+        (calendarStartDate, weeksNeeded) = CalendarUtil.CalculateMonth(currentMonth);
         await LoadCalendar();
     }
 
@@ -159,13 +159,13 @@ else
     private async Task PrevMonth()
     {
         currentMonth = currentMonth.AddMonths(-1);
-        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
+        (calendarStartDate, weeksNeeded) = CalendarUtil.CalculateMonth(currentMonth);
         await LoadCalendar();
     }
     private async Task NextMonth()
     {
         currentMonth = currentMonth.AddMonths(1);
-        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
+        (calendarStartDate, weeksNeeded) = CalendarUtil.CalculateMonth(currentMonth);
         await LoadCalendar();
     }
     private async Task SaveShift()

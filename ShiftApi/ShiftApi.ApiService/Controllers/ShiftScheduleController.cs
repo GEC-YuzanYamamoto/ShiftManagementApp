@@ -31,38 +31,37 @@ namespace ShiftApi.ApiService.Controllers
             var currentUserId = GetCurrentUserId();
             var isAdmin = User.IsInRole("Admin");
 
-            var query = _db.ShiftSchedules.AsQueryable();
+            var query = _db.ShiftSchedules.AsNoTracking().AsQueryable();
 
-            if (from.HasValue)
-            {
-                query = query.Where(s => s.ShiftDate >= from.Value);
-            }
-
-            if (to.HasValue)
-            {
-                query = query.Where(s => s.ShiftDate <= to.Value);
-            }
+            if (from.HasValue) query = query.Where(s => s.ShiftDate >= from.Value);
+            if (to.HasValue) query = query.Where(s => s.ShiftDate <= to.Value);
 
             if (isAdmin)
             {
                 if (userId.HasValue)
-                {
                     query = query.Where(s => s.UserId == userId.Value);
-                }
-                // userId 未指定 → 全員分
             }
             else
             {
-                // 一般ユーザーは自分のシフトだけ
                 query = query.Where(s => s.UserId == currentUserId);
             }
 
-            var list = await query
+            var result = await query
                 .OrderBy(s => s.ShiftDate)
                 .ThenBy(s => s.UserId)
+                .Select(s => new ShiftScheduleDto
+                {
+                    Id = s.Id,
+                    UserId = s.UserId,
+                    UserName = s.User.Name,
+                    ShiftDate = s.ShiftDate,
+                    ShiftType = s.ShiftType,
+                    ConfirmedAt = s.ConfirmedAt,
+                    ConfirmedBy = s.ConfirmedBy,
+                    ConfirmedByName = s.ConfirmedByUser.Name
+                })
                 .ToListAsync();
 
-            var result = list.Select(ToDto).ToList();
             return Ok(result);
         }
 
@@ -70,19 +69,20 @@ namespace ShiftApi.ApiService.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<ShiftScheduleDto>> GetById(int id)
         {
-            var entity = await _db.ShiftSchedules.FindAsync(id);
-            if (entity == null) return NotFound();
-
             var currentUserId = GetCurrentUserId();
             var isAdmin = User.IsInRole("Admin");
 
-            // 一般ユーザーは自分のシフトだけ参照可能
-            if (!isAdmin && entity.UserId != currentUserId)
-            {
-                return Forbid();
-            }
+            // まず Entity を取って権限チェック（軽量）
+            var entity = await _db.ShiftSchedules.AsNoTracking()
+                .Select(s => new { s.Id, s.UserId })
+                .FirstOrDefaultAsync(s => s.Id == id);
 
-            return Ok(ToDto(entity));
+            if (entity == null) return NotFound();
+            if (!isAdmin && entity.UserId != currentUserId) return Forbid();
+
+            // DTOとして取得（名前込み）
+            var dto = await LoadDtoAsync(id);
+            return Ok(dto);
         }
 
         // POST /shift-schedules
@@ -91,24 +91,22 @@ namespace ShiftApi.ApiService.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ShiftScheduleDto>> Create([FromBody] CreateShiftScheduleDto dto)
         {
-            var adminId = GetCurrentUserId(); // 確定した管理者
+            var adminId = GetCurrentUserId();
 
-            // 同一ユーザー＋日付のシフトが既にある場合の扱い
             var existing = await _db.ShiftSchedules
                 .FirstOrDefaultAsync(s => s.UserId == dto.UserId && s.ShiftDate == dto.ShiftDate);
 
             if (existing != null)
             {
-                // ここでは「上書き確定」とする
                 existing.ShiftType = dto.ShiftType;
                 existing.ConfirmedAt = DateTime.UtcNow;
                 existing.ConfirmedBy = adminId;
 
-                // ★確定したので対応する希望シフトを削除
                 await DeleteRelatedRequestsAsync(dto.UserId, dto.ShiftDate);
 
                 await _db.SaveChangesAsync();
-                return Ok(ToDto(existing));
+
+                return Ok(await LoadDtoAsync(existing.Id));
             }
 
             var entity = new ShiftSchedule
@@ -122,12 +120,13 @@ namespace ShiftApi.ApiService.Controllers
 
             _db.ShiftSchedules.Add(entity);
 
-            // ★新規確定でも同じく希望シフトを削除
             await DeleteRelatedRequestsAsync(dto.UserId, dto.ShiftDate);
 
             await _db.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToDto(entity));
+            // ★ここがバグ修正：existing ではなく entity の Id を使う
+            var resultDto = await LoadDtoAsync(entity.Id);
+            return CreatedAtAction(nameof(GetById), new { id = entity.Id }, resultDto);
         }
 
         // PUT /shift-schedules/{id}
@@ -149,11 +148,10 @@ namespace ShiftApi.ApiService.Controllers
 
             await _db.SaveChangesAsync();
 
-            return Ok(ToDto(entity));
+            return Ok(await LoadDtoAsync(entity.Id));
         }
 
         // DELETE /shift-schedules/{id}
-        // 確定シフトを削除
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
@@ -178,26 +176,31 @@ namespace ShiftApi.ApiService.Controllers
             }
         }
 
-        // ヘルパー
         private int GetCurrentUserId()
         {
             var idClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
             if (idClaim == null)
-            {
                 throw new InvalidOperationException("UserId claim (NameIdentifier) が見つかりません。");
-            }
 
             return int.Parse(idClaim.Value);
         }
-        private static ShiftScheduleDto ToDto(ShiftSchedule s) =>
-            new()
-            {
-                Id = s.Id,
-                UserId = s.UserId,
-                ShiftDate = s.ShiftDate,
-                ShiftType = s.ShiftType,
-                ConfirmedAt = s.ConfirmedAt,
-                ConfirmedBy = s.ConfirmedBy
-            };
+
+        private Task<ShiftScheduleDto> LoadDtoAsync(int id)
+        {
+            return _db.ShiftSchedules.AsNoTracking()
+                .Where(s => s.Id == id)
+                .Select(s => new ShiftScheduleDto
+                {
+                    Id = s.Id,
+                    UserId = s.UserId,
+                    UserName = s.User.Name,
+                    ShiftDate = s.ShiftDate,
+                    ShiftType = s.ShiftType,
+                    ConfirmedAt = s.ConfirmedAt,
+                    ConfirmedBy = s.ConfirmedBy,
+                    ConfirmedByName = s.ConfirmedByUser.Name
+                })
+                .FirstAsync();
+        }
     }
 }
