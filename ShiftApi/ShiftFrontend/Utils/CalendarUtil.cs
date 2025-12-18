@@ -8,10 +8,7 @@
         // 表示対象の月（必ずその月の1日を指定する）
         // カレンダー表示開始日（日曜日）
         // 表示に必要な週数（通常 5 or 6）
-        public static void CalculateMonth(
-            DateTime targetMonth,
-            out DateTime calendarStartDate,
-            out int weeksNeeded)
+        public static (DateTime calendarStartDate, int weeksNeeded) CalculateMonth(DateTime targetMonth)
         {
             // targetMonth は「月初」に丸める
             var firstDayOfMonth = new DateTime(
@@ -23,7 +20,7 @@
             int diff = (int)firstDayOfMonth.DayOfWeek;
 
             // カレンダー表示開始日（必ず日曜日）
-            calendarStartDate = firstDayOfMonth.AddDays(-diff);
+            DateTime calendarStartDate = firstDayOfMonth.AddDays(-diff);
 
             // 当月の最終日
             var lastDayOfMonth = new DateTime(
@@ -36,8 +33,10 @@
                 6 - (int)lastDayOfMonth.DayOfWeek);
 
             // 表示に必要な週数
-            weeksNeeded =
+             int weeksNeeded =
                 ((lastDayOfCalendar - calendarStartDate).Days + 1) / 7;
+
+            return (calendarStartDate, weeksNeeded);
         }
 
         // カレンダー表示期間（DateOnly）を取得する

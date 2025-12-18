@@ -1,0 +1,60 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+package Models {
+
+  class User {
+    +int Id
+    +string Name
+    +string Email
+    -string PasswordHash
+    +UserRole Role
+    +DateTime CreatedAt
+  }
+
+  class ShiftRequest {
+    +int Id
+    +int UserId
+    +DateOnly ShiftDate
+    +ShiftType ShiftType
+    +RequestStatus Status
+    +DateTime CreatedAt
+    +DateTime UpdatedAt
+  }
+
+  class ShiftSchedule {
+    +int Id
+    +int UserId
+    +DateOnly ShiftDate
+    +ShiftType ShiftType
+    +DateTime ConfirmedAt
+    +int ConfirmedBy
+  }
+
+  enum UserRole {
+    User = 0
+    Admin = 1
+  }
+
+  enum ShiftType {
+    Early = 0
+    Late = 1
+    Night = 2
+    Off = 3
+  }
+
+  enum RequestStatus {
+    Pending = 0
+    Approved = 1
+    Rejected = 2
+  }
+}
+
+' 関連（いまのコードは Navigation が無いので「UserId による関連」として表現）
+User "1" -- "0..*" ShiftRequest : UserId
+User "1" -- "0..*" ShiftSchedule : UserId
+
+' 確定者（ConfirmedBy）も User を指しているので関連を出すと伝わりやすい
+User "1" <-- "0..*" ShiftSchedule : ConfirmedBy
+
+@enduml

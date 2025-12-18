@@ -4,11 +4,12 @@
     {
         public int Id { get; set; }
         public int UserId { get; set; }
+        public string UserName { get; set; } = "";
         public DateOnly ShiftDate { get; set; }
         public byte ShiftType { get; set; }
         public DateTime ConfirmedAt { get; set; }
         public int ConfirmedBy { get; set; }
-
+        public string ConfirmedByName { get; set; } = "";
     }
 
     public class CreateShiftScheduleDto

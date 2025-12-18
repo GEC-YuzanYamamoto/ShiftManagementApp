@@ -315,7 +315,7 @@ else
             return;
         }
 
-        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
+        (calendarStartDate, weeksNeeded) = CalendarUtil.CalculateMonth(currentMonth);
         await LoadUsers();
         await LoadCalendarData();
     }
@@ -333,7 +333,7 @@ else
         editShiftType = 1;
         editScheduleShiftType = 1;
 
-        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
+        (calendarStartDate, weeksNeeded) = CalendarUtil.CalculateMonth(currentMonth);
         await LoadCalendarData();
     }
     private async Task NextMonth()
@@ -348,7 +348,7 @@ else
         editShiftType = 1;
         editScheduleShiftType = 1;
 
-        CalendarUtil.CalculateMonth(currentMonth, out calendarStartDate, out weeksNeeded);
+        (calendarStartDate, weeksNeeded) = CalendarUtil.CalculateMonth(currentMonth);
         await LoadCalendarData();
     }
     private void OnSelectDate(DateTime date)
