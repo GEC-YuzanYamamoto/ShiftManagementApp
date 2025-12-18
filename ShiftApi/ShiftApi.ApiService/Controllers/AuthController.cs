@@ -42,7 +42,7 @@ namespace ShiftApi.ApiService.Controllers
             var hash = PasswordHasher.Hash(dto.Password);
             if (user.PasswordHash != hash)
             {
-                return Unauthorized("パスワードが正しくありません。");
+                return Unauthorized("メールアドレスまたはパスワードが正しくありません。");
             }
 
             // JWT トークンを作成
