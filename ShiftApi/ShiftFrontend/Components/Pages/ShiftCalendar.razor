@@ -53,11 +53,12 @@ else
                         var schedules = ShiftSchedules.Where(x => x.ShiftDate == d).ToList();
 
                         bool isOther = date.Month != currentMonth.Month;
+                        bool selectable = IsSelectable(d);
 
-                        <td class="@GetCellClass(date, isOther) calendar-cell"
+                        <td class="@($"{GetCellClass(date, isOther)} {GetSelectableClass(selectable)} calendar-cell")"
                             title="@GetDayTooltip(date, requests, schedules)"
-                            @onclick="@(() => OnDateClick(d))"
-                            style="cursor:pointer; vertical-align:top;">
+                            @onclick="@(selectable ? (() => OnDateClick(d)) : null)"
+                            style="@GetCellStyle(selectable)">
 
                             <div class="d-flex justify-content-between">
                                 <span class="fw-bold">@date.Day</span>
@@ -118,6 +119,9 @@ else
 @code {
     private DateTime currentMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private DateTime calendarStartDate;
+    private DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+    // 今日以前を選択不可（今日も不可）
+    private bool IsSelectable(DateOnly d) => d > Today;
 
     private int weeksNeeded;
 
@@ -196,16 +200,26 @@ else
     }
     private void OnDateClick(DateOnly d)
     {
+        if (!IsSelectable(d))
+            return;
+
         selectedDate = d;
 
         var existing = ShiftRequests.FirstOrDefault(x => x.ShiftDate == d);
         selectedShiftType = existing?.ShiftType.ToString() ?? "";
+        modalMessage = null;
     }
     private void CloseModal()
     {
         selectedDate = null;
         modalMessage = null;
     }
+    private string GetSelectableClass(bool selectable)
+    => selectable ? "calendar-active" : "calendar-disabled";
+    private string GetCellStyle(bool selectable)
+        => selectable
+            ? "cursor:pointer; vertical-align:top;"
+            : "cursor:not-allowed; vertical-align:top; opacity:0.6;";
 
     // --- データ取得 ---
     private async Task LoadUsers()
